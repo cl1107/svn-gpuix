@@ -1,7 +1,7 @@
 import { useTheme } from '../../app/ThemeContext';
 import { useMemo, useState } from 'react';
 import { Icon } from '../../app/icons';
-import { font, layout } from '../../app/theme';
+import { font, layout, type ThemeTokens } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import {
@@ -19,12 +19,14 @@ import {
 } from '../../store/selectors';
 import { useRepositoryStore } from '../../store/RepositoryStoreContext';
 
-const actionTone: Record<PathAction, { color: string; background: string }> = {
-  M: { color: theme.modified, background: theme.modifiedBg },
-  A: { color: theme.added, background: theme.addedBg },
-  D: { color: theme.deleted, background: theme.deletedBg },
-  R: { color: theme.replaced, background: theme.replacedBg },
-};
+function actionTone(theme: ThemeTokens): Record<PathAction, { color: string; background: string }> {
+  return {
+    M: { color: theme.modified, background: theme.modifiedBg },
+    A: { color: theme.added, background: theme.addedBg },
+    D: { color: theme.deleted, background: theme.deletedBg },
+    R: { color: theme.replaced, background: theme.replacedBg },
+  };
+}
 
 export function HistoryView({ onRefresh }: { onRefresh: () => void }) {
 
@@ -245,7 +247,8 @@ export function HistoryView({ onRefresh }: { onRefresh: () => void }) {
 }
 
 function ActionBadge({ action }: { action: PathAction }) {
-  const tone = actionTone[action];
+  const theme = useTheme();
+  const tone = actionTone(theme)[action];
   return (
     <div
       style={{
