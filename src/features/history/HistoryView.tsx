@@ -2,14 +2,20 @@ import { useMemo, useState } from 'react';
 import { font, layout, theme } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ErrorBanner';
-import type { AppError } from '../../domain/error';
 import {
   authorInitial,
   filterRevisions,
   formatRevisionDate,
   type PathAction,
-  type SvnRevision,
 } from '../../domain/revision';
+import {
+  selectHistory,
+  selectHistoryError,
+  selectHistoryLoading,
+  selectRepository,
+  selectSelectedRevision,
+} from '../../store/selectors';
+import { useRepositoryStore } from '../../store/RepositoryStoreContext';
 
 const actionTone: Record<PathAction, { color: string; background: string }> = {
   M: { color: theme.modified, background: theme.modifiedBg },
@@ -18,25 +24,17 @@ const actionTone: Record<PathAction, { color: string; background: string }> = {
   R: { color: theme.replaced, background: theme.replacedBg },
 };
 
-export function HistoryView({
-  revisions,
-  selected,
-  loading,
-  error,
-  refreshing,
-  repositoryUrl,
-  onSelect,
-  onRefresh,
-}: {
-  revisions: SvnRevision[];
-  selected: SvnRevision | null;
-  loading?: boolean;
-  error?: AppError | null;
-  refreshing?: boolean;
-  repositoryUrl?: string;
-  onSelect: (revision: number) => void;
-  onRefresh: () => void;
-}) {
+export function HistoryView({ onRefresh }: { onRefresh: () => void }) {
+  const revisions = useRepositoryStore(selectHistory);
+  const selectedRevision = useRepositoryStore(selectSelectedRevision);
+  const historyLoading = useRepositoryStore(selectHistoryLoading);
+  const error = useRepositoryStore(selectHistoryError);
+  const repository = useRepositoryStore(selectRepository);
+  const onSelect = useRepositoryStore((state) => state.selectRevision);
+  const selected = revisions.find((rev) => rev.revision === selectedRevision) ?? null;
+  const loading = historyLoading && revisions.length === 0;
+  const refreshing = historyLoading;
+  const repositoryUrl = repository?.repositoryUrl;
   const [filter, setFilter] = useState('');
   const visible = useMemo(() => filterRevisions(revisions, filter), [revisions, filter]);
 

@@ -75,7 +75,7 @@ export function App({
 
   const openPath = useCallback(
     async (path: string, options?: { keepCurrentOnError?: boolean }) => {
-      if (busyRef.current || svn.status !== 'available') return;
+      if (busyRef.current || svn.status !== 'available' || services.operations.running) return;
       busyRef.current = true;
       setBusy(true);
       setOpenError(null);
@@ -103,14 +103,14 @@ export function App({
   );
 
   const closeWorkingCopy = useCallback(() => {
-    if (busyRef.current) return;
+    if (busyRef.current || services.operations.running) return;
     setRepository(null);
     setOpenError(null);
     setSwitchError(null);
-  }, []);
+  }, [services.operations]);
 
   const chooseFolder = useCallback(async () => {
-    if (busyRef.current || svn.status !== 'available') return;
+    if (busyRef.current || svn.status !== 'available' || services.operations.running) return;
     try {
       const picked = await services.picker.pickDirectory({ title: 'Open SVN Working Copy' });
       if (!picked) return;
@@ -120,7 +120,7 @@ export function App({
       if (repository) setSwitchError(appError);
       else setOpenError(appError);
     }
-  }, [openPath, repository, services.picker, svn.status]);
+  }, [openPath, repository, services, svn.status]);
 
   const chooseFolderRef = useRef(chooseFolder);
   chooseFolderRef.current = chooseFolder;

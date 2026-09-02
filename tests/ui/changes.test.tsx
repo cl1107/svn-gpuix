@@ -1,8 +1,9 @@
-import { useState } from 'react';
 import { describe, expect, test } from 'bun:test';
 import { createTestRoot, hasNativeTestRenderer } from '@gpuix/react/testing';
 import { ChangesPanel } from '../../src/features/changes/ChangesPanel';
 import type { WorkingCopyChange } from '../../src/domain/change';
+import { RepositoryStoreProvider } from '../../src/store/RepositoryStoreContext';
+import { createRepositoryStore } from '../../src/store/repositoryStore';
 
 const changes: WorkingCopyChange[] = [
   { path: 'src/a.ts', absolutePath: '/tmp/wc/src/a.ts', status: 'modified' },
@@ -10,28 +11,16 @@ const changes: WorkingCopyChange[] = [
 ];
 
 function PanelHarness() {
-  const [checkedPaths, setCheckedPaths] = useState(() => new Set(['src/a.ts']));
-  const [selectedPath, setSelectedPath] = useState<string | null>('src/a.ts');
+  const store = createRepositoryStore({
+    changes,
+    checkedPaths: ['src/a.ts'],
+    selectedPath: 'src/a.ts',
+    commitMessage: 'msg',
+  });
   return (
-    <ChangesPanel
-      changes={changes}
-      checkedPaths={checkedPaths}
-      selectedPath={selectedPath}
-      commitMessage="msg"
-      onSelect={setSelectedPath}
-      onToggle={(path) => {
-        setCheckedPaths((prev) => {
-          const next = new Set(prev);
-          if (next.has(path)) next.delete(path);
-          else next.add(path);
-          return next;
-        });
-      }}
-      onToggleAll={() => {}}
-      onCommitMessage={() => {}}
-      onCommit={() => {}}
-      onRefresh={() => {}}
-    />
+    <RepositoryStoreProvider store={store}>
+      <ChangesPanel onCommit={() => {}} onRefresh={() => {}} />
+    </RepositoryStoreProvider>
   );
 }
 

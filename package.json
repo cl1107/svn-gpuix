@@ -16,7 +16,8 @@
     "@gpuix/native": "0.7.0",
     "@gpuix/react": "0.7.0",
     "fast-xml-parser": "^5.11.1",
-    "react": "^19.2.8"
+    "react": "^19.2.8",
+    "zustand": "5.0.15"
   },
   "devDependencies": {
     "@types/bun": "^1.4.0",

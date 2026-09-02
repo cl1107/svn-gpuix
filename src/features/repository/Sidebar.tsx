@@ -3,20 +3,17 @@ import { addShortcutListener } from '../../app/shortcuts';
 import { font, layout, theme } from '../../app/theme';
 import { Button } from '../../components/Button';
 import type { RecentItem } from '../welcome/WelcomeScreen';
+import { selectChanges, selectMutating, selectPage } from '../../store/selectors';
+import { useRepositoryStore } from '../../store/RepositoryStoreContext';
 
-export type RepositoryPage = 'changes' | 'history' | 'working-copy';
+export type { RepositoryPage } from '../../domain/repositoryPage';
 
 export function Sidebar({
-  page,
   workingCopyName,
   workingCopyPath,
   revision,
   syncLabel,
-  changeCount,
   svnVersion,
-  mutating,
-  updating,
-  onNavigate,
   onUpdate,
   onAddUnversioned,
   onRevertSelected,
@@ -25,16 +22,11 @@ export function Sidebar({
   currentPath,
   onSwitchWorkingCopy,
 }: {
-  page: RepositoryPage;
   workingCopyName: string;
   workingCopyPath: string;
   revision: number;
   syncLabel: string;
-  changeCount: number;
   svnVersion?: string;
-  mutating?: boolean;
-  updating?: boolean;
-  onNavigate: (page: RepositoryPage) => void;
   onUpdate: () => void;
   onAddUnversioned?: () => void;
   onRevertSelected?: () => void;
@@ -43,8 +35,14 @@ export function Sidebar({
   currentPath?: string;
   onSwitchWorkingCopy?: (path: string) => void;
 }) {
+  const page = useRepositoryStore(selectPage);
+  const mutatingKind = useRepositoryStore(selectMutating);
+  const changeCount = useRepositoryStore(selectChanges).length;
+  const onNavigate = useRepositoryStore((state) => state.setPage);
+  const mutating = mutatingKind !== null;
+  const updating = mutatingKind === 'update';
   const [menuOpen, setMenuOpen] = useState(false);
-  const canSwitch = Boolean(onSwitchWorkingCopy) && (recents?.length ?? 0) > 0;
+  const canSwitch = Boolean(onSwitchWorkingCopy) && (recents?.length ?? 0) > 0 && !mutating;
 
   useEffect(() => {
     return addShortcutListener((action) => {

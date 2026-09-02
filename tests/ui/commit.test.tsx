@@ -3,6 +3,8 @@ import { createTestRoot, hasNativeTestRenderer } from '@gpuix/react/testing';
 import { OperationManager } from '../../src/application/operationManager';
 import { ChangesPanel } from '../../src/features/changes/ChangesPanel';
 import { RepositoryScreen } from '../../src/features/repository/RepositoryScreen';
+import { RepositoryStoreProvider } from '../../src/store/RepositoryStoreContext';
+import { createRepositoryStore } from '../../src/store/repositoryStore';
 import type { WorkingCopyChange } from '../../src/domain/change';
 import type { Repository } from '../../src/domain/repository';
 
@@ -48,21 +50,21 @@ describe('Commit UI', () => {
     const { render, renderer, unmount } = createTestRoot({ width: 396, height: 960 });
     try {
       let calls = 0;
+      const store = createRepositoryStore({
+        changes,
+        checkedPaths: ['a.ts'],
+        selectedPath: 'a.ts',
+        commitMessage: '',
+      });
       render(
-        <ChangesPanel
-          changes={changes}
-          checkedPaths={new Set(['a.ts'])}
-          selectedPath="a.ts"
-          commitMessage=""
-          onSelect={() => {}}
-          onToggle={() => {}}
-          onToggleAll={() => {}}
-          onCommitMessage={() => {}}
-          onCommit={() => {
-            calls += 1;
-          }}
-          onRefresh={() => {}}
-        />,
+        <RepositoryStoreProvider store={store}>
+          <ChangesPanel
+            onCommit={() => {
+              calls += 1;
+            }}
+            onRefresh={() => {}}
+          />
+        </RepositoryStoreProvider>,
       );
       renderer.flush();
       click(renderer, 'commit-button');
@@ -242,4 +244,3 @@ describe('Commit UI', () => {
     }
   });
 });
-
