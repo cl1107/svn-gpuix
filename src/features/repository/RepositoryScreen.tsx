@@ -459,7 +459,14 @@ export function RepositoryScreen({
         onDeleteSelected={() => requestConfirm('delete', deletable())}
         recents={recents}
         currentPath={rootPath}
-        onSwitchWorkingCopy={onSwitchWorkingCopy}
+        onSwitchWorkingCopy={
+          onSwitchWorkingCopy
+            ? (path) => {
+                if (store.getState().mutating !== null || operations?.running) return;
+                onSwitchWorkingCopy(path);
+              }
+            : undefined
+        }
       />
       {noticeError ? (
         <div
