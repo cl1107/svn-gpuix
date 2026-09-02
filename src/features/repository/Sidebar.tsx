@@ -1,7 +1,8 @@
+import { useTheme } from '../../app/ThemeContext';
 import { useEffect, useState } from 'react';
 import { Icon, type IconName } from '../../app/icons';
 import { addShortcutListener } from '../../app/shortcuts';
-import { font, layout, theme } from '../../app/theme';
+import { font, layout } from '../../app/theme';
 import { Button } from '../../components/Button';
 import type { RecentItem } from '../welcome/WelcomeScreen';
 import { selectChanges, selectMutating, selectPage } from '../../store/selectors';
@@ -36,6 +37,8 @@ export function Sidebar({
   currentPath?: string;
   onSwitchWorkingCopy?: (path: string) => void;
 }) {
+
+  const theme = useTheme();
   const page = useRepositoryStore(selectPage);
   const mutatingKind = useRepositoryStore(selectMutating);
   const changeCount = useRepositoryStore(selectChanges).length;
@@ -271,6 +274,7 @@ function MenuRow({
   muted?: boolean;
   onClick: () => void;
 }) {
+  const theme = useTheme();
   return (
     <div
       testId={testId}
@@ -321,6 +325,7 @@ function QuickAction({
   disabled?: boolean;
   onClick?: () => void;
 }) {
+  const theme = useTheme();
   return (
     <div
       testId={testId}
@@ -342,6 +347,7 @@ function QuickAction({
 }
 
 function SectionLabel({ children }: { children: string }) {
+  const theme = useTheme();
   return (
     <text style={{ color: theme.textSubtle, fontSize: 10, fontFamily: font.ui, fontWeight: 600, paddingLeft: 6 }}>
       {children}
@@ -364,6 +370,7 @@ function NavRow({
   onClick: () => void;
   testId?: string;
 }) {
+  const theme = useTheme();
   return (
     <div
       testId={testId}
