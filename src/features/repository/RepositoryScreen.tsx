@@ -36,23 +36,16 @@ import type { AppError } from '../../domain/error';
 import { canCommit, lastOutputLine, type MutationKind } from '../../domain/operation';
 import type { Repository } from '../../domain/repository';
 import { CommandError } from '../../services/svn/commandRunner';
+import { RepositoryStoreProvider } from '../../store/RepositoryStoreContext';
 import { createRepositoryStore } from '../../store/repositoryStore';
 import {
   selectChanges,
   selectCheckedPaths,
-  selectCommitMessage,
-  selectHistory,
-  selectHistoryError,
-  selectHistoryLoading,
   selectMutating,
-  selectMutationError,
   selectOperationLine,
   selectPage,
-  selectRefreshing,
   selectRepository,
   selectSelectedPath,
-  selectSelectedRevision,
-  selectStatusError,
 } from '../../store/selectors';
 import { ChangesPanel } from '../changes/ChangesPanel';
 import { DiffPanel, type DiffView } from '../changes/DiffPanel';
@@ -122,15 +115,7 @@ export function RepositoryScreen({
   const changes = useStore(store, selectChanges);
   const checkedPaths = useStore(store, selectCheckedPaths);
   const selectedPath = useStore(store, selectSelectedPath);
-  const commitMessage = useStore(store, selectCommitMessage);
-  const history = useStore(store, selectHistory);
-  const selectedRevision = useStore(store, selectSelectedRevision);
-  const historyError = useStore(store, selectHistoryError);
-  const historyLoading = useStore(store, selectHistoryLoading);
-  const statusError = useStore(store, selectStatusError);
-  const refreshing = useStore(store, selectRefreshing);
   const mutating = useStore(store, selectMutating);
-  const mutationError = useStore(store, selectMutationError);
   const operationLine = useStore(store, selectOperationLine);
 
   const [statusGeneration, setStatusGeneration] = useState(0);
@@ -275,7 +260,6 @@ export function RepositoryScreen({
     };
   }, [live, rootPath, svn, selectedChange, statusGeneration]);
 
-  const selectedRev = history.find((rev) => rev.revision === selectedRevision) ?? null;
   const shownRevision = liveRepo?.revision ?? revision;
   const busy = mutating !== null;
   const syncLabel = mutating === 'update'
@@ -402,6 +386,7 @@ export function RepositoryScreen({
       : 'The file will be removed from disk and scheduled for deletion in SVN.';
 
   return (
+    <RepositoryStoreProvider store={store}>
     <div
       testId="repository-screen"
       style={{
@@ -415,16 +400,11 @@ export function RepositoryScreen({
       }}
     >
       <Sidebar
-        page={page}
         workingCopyName={workingCopyName}
         workingCopyPath={workingCopyPath}
         revision={shownRevision}
         syncLabel={syncLabel}
-        changeCount={changes.length}
         svnVersion={svnVersion}
-        mutating={busy}
-        updating={mutating === 'update'}
-        onNavigate={store.getState().setPage}
         onUpdate={() => {
           if (!rootPath || !svn || !operations) return;
           void runMutation('update', async () => {
@@ -481,16 +461,7 @@ export function RepositoryScreen({
         </div>
       ) : null}
       {page === 'history' ? (
-        <HistoryView
-          revisions={history}
-          selected={selectedRev}
-          loading={live && historyLoading && history.length === 0}
-          error={historyError}
-          refreshing={historyLoading}
-          repositoryUrl={liveRepo?.repositoryUrl}
-          onSelect={store.getState().selectRevision}
-          onRefresh={() => void runHistoryRefresh()}
-        />
+        <HistoryView onRefresh={() => void runHistoryRefresh()} />
       ) : page === 'working-copy' ? (
         <div style={{ flexGrow: 1, padding: 24 }}>
           <text style={{ color: theme.textMuted, fontSize: 13, fontFamily: font.ui }}>
@@ -500,19 +471,6 @@ export function RepositoryScreen({
       ) : (
         <>
           <ChangesPanel
-            changes={changes}
-            checkedPaths={checkedPaths}
-            selectedPath={selectedPath}
-            commitMessage={commitMessage}
-            loading={live && refreshing && changes.length === 0}
-            error={mutationError ?? statusError}
-            refreshing={refreshing}
-            mutating={busy}
-            committing={mutating === 'commit'}
-            onSelect={store.getState().selectPath}
-            onToggle={store.getState().togglePath}
-            onToggleAll={store.getState().toggleAll}
-            onCommitMessage={store.getState().setCommitMessage}
             onCommit={runCommit}
             onRefresh={() => void runRefresh()}
           />
@@ -563,6 +521,7 @@ export function RepositoryScreen({
         />
       ) : null}
     </div>
+    </RepositoryStoreProvider>
   );
 }
 
