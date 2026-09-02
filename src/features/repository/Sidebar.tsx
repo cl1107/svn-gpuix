@@ -45,7 +45,7 @@ export function Sidebar({
   onSwitchWorkingCopy?: (path: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const canSwitch = Boolean(onSwitchWorkingCopy) && (recents?.length ?? 0) > 0;
+  const canSwitch = Boolean(onSwitchWorkingCopy) && (recents?.length ?? 0) > 0 && !mutating;
 
   useEffect(() => {
     return addShortcutListener((action) => {
