@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { addShortcutListener } from '../../app/shortcuts';
 import { font, layout, theme } from '../../app/theme';
 import { Button } from '../../components/Button';
+import type { RepositoryPage } from '../../domain/repositoryPage';
 import type { RecentItem } from '../welcome/WelcomeScreen';
 
-export type RepositoryPage = 'changes' | 'history' | 'working-copy';
+export type { RepositoryPage };
 
 export function Sidebar({
   page,

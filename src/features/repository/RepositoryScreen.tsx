@@ -18,7 +18,12 @@ import type { OperationManager } from '../../application/operationManager';
 import { refreshWorkingCopy, type WorkingCopyReader } from '../../application/refreshRepository';
 import { Dialog } from '../../components/Dialog';
 import { ErrorBanner } from '../../components/ErrorBanner';
-import { fixturePatch } from '../../design/fixtures';
+import {
+  fixtureChanges,
+  fixtureCheckedPaths,
+  fixtureHistory,
+  fixturePatch,
+} from '../../design/fixtures';
 import {
   isAddable,
   isCommittable,
@@ -53,7 +58,8 @@ import { ChangesPanel } from '../changes/ChangesPanel';
 import { DiffPanel, type DiffView } from '../changes/DiffPanel';
 import { HistoryView } from '../history/HistoryView';
 import type { RecentItem } from '../welcome/WelcomeScreen';
-import { Sidebar, type RepositoryPage } from './Sidebar';
+import type { RepositoryPage } from '../../domain/repositoryPage';
+import { Sidebar } from './Sidebar';
 
 export type RepositorySvn = WorkingCopyReader &
   DiffReader &
@@ -90,12 +96,25 @@ export function RepositoryScreen({
 }) {
   const live = Boolean(repository && svn);
   const [store] = useState(() =>
-    createRepositoryStore({
-      live,
-      page: initialPage,
-      repository,
-      initialCommitMessage,
-    }),
+    createRepositoryStore(
+      live
+        ? {
+            page: initialPage,
+            repository,
+            commitMessage: initialCommitMessage ?? '',
+            refreshing: true,
+          }
+        : {
+            page: initialPage,
+            repository,
+            changes: fixtureChanges,
+            checkedPaths: fixtureCheckedPaths,
+            selectedPath: fixtureChanges[0]?.path ?? null,
+            commitMessage: initialCommitMessage ?? 'Fix profile avatar fallback and API mapping',
+            history: fixtureHistory,
+            selectedRevision: fixtureHistory[0]?.revision ?? null,
+          },
+    ),
   );
 
   const page = useStore(store, selectPage);
@@ -278,8 +297,8 @@ export function RepositoryScreen({
     (targets ?? changes.filter((change) => checkedPaths.has(change.path))).filter(isDeletable);
 
   const runMutation = async (kind: MutationKind, work: () => Promise<void>, forceChecked?: ReadonlySet<string>) => {
-    if (!live || !rootPath || !svn || !operations || busy) return;
-    store.getState().beginMutation(kind);
+    if (!live || !rootPath || !svn || !operations) return;
+    if (!store.getState().tryBeginMutation(kind, operations.running)) return;
     try {
       await work();
       await runRefresh(forceChecked);
@@ -297,11 +316,19 @@ export function RepositoryScreen({
     const paths = snapshot.changes
       .filter((change) => snapshot.checkedPaths.has(change.path) && isCommittable(change))
       .map((change) => change.path);
-    if (!canCommit({ message, paths, mutating: snapshot.mutating !== null })) return;
+    if (
+      !canCommit({
+        message,
+        paths,
+        mutating: snapshot.mutating !== null || operations.running !== null,
+      })
+    ) {
+      return;
+    }
     const previousMessage = snapshot.commitMessage;
     const previousChecked = new Set(snapshot.checkedPaths);
+    if (!store.getState().tryBeginMutation('commit', operations.running)) return;
     void (async () => {
-      store.getState().beginMutation('commit');
       try {
         await commitChanges({
           rootPath,
@@ -310,12 +337,10 @@ export function RepositoryScreen({
           svn: svn as CommitClient,
           operations,
         });
-        store.getState().setCommitMessage('');
-        store.setState({ checkedPaths: new Set() });
+        store.getState().applyCommitSuccess();
         await runRefresh();
       } catch (error) {
-        store.getState().setCommitMessage(previousMessage);
-        store.setState({ checkedPaths: previousChecked });
+        store.getState().restoreCommitDraft({ message: previousMessage, checkedPaths: previousChecked });
         store.getState().setMutationError(toAppError(error, 'Commit failed'));
       } finally {
         store.getState().endMutation();
@@ -324,7 +349,7 @@ export function RepositoryScreen({
   };
 
   const requestConfirm = (kind: ConfirmKind, targets: WorkingCopyChange[]) => {
-    if (busy || targets.length === 0) return;
+    if (store.getState().mutating !== null || operations?.running || targets.length === 0) return;
     setConfirm({ kind, targets });
   };
 
