@@ -1,5 +1,6 @@
+import { useTheme } from '../../app/ThemeContext';
 import { Icon } from '../../app/icons';
-import { font, theme } from '../../app/theme';
+import { font } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import type { AppError } from '../../domain/error';
@@ -35,6 +36,8 @@ export function WelcomeScreen({
   onCheckout: () => void;
   onOpenRecent?: (item: RecentItem) => void;
 }) {
+
+  const theme = useTheme();
   const svnReady = svn.status === 'available' && !busy;
 
   return (
@@ -227,6 +230,7 @@ function WelcomeCard({
   disabled: boolean;
   onAction: () => void;
 }) {
+  const theme = useTheme();
   return (
     <div
       testId={testId}
