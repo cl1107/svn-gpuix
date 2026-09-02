@@ -3,44 +3,43 @@ import { font, layout, theme } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { Checkbox } from '../../components/Checkbox';
 import { ErrorBanner } from '../../components/ErrorBanner';
-import { isCommittable, type WorkingCopyChange } from '../../domain/change';
-import type { AppError } from '../../domain/error';
+import { isCommittable } from '../../domain/change';
 import { canCommit as commitReady } from '../../domain/operation';
+import {
+  selectChanges,
+  selectCheckedPaths,
+  selectCommitMessage,
+  selectMutating,
+  selectMutationError,
+  selectRefreshing,
+  selectSelectedPath,
+  selectStatusError,
+} from '../../store/selectors';
+import { useRepositoryStore } from '../../store/RepositoryStoreContext';
 import { ChangeRow } from './ChangeRow';
 
 export function ChangesPanel({
-  changes,
-  checkedPaths,
-  selectedPath,
-  commitMessage,
-  loading,
-  error,
-  refreshing,
-  mutating,
-  committing,
-  onSelect,
-  onToggle,
-  onToggleAll,
-  onCommitMessage,
   onCommit,
   onRefresh,
 }: {
-  changes: WorkingCopyChange[];
-  checkedPaths: ReadonlySet<string>;
-  selectedPath: string | null;
-  commitMessage: string;
-  loading?: boolean;
-  error?: AppError | null;
-  refreshing?: boolean;
-  mutating?: boolean;
-  committing?: boolean;
-  onSelect: (path: string) => void;
-  onToggle: (path: string) => void;
-  onToggleAll: (paths: string[]) => void;
-  onCommitMessage: (value: string) => void;
   onCommit: () => void;
   onRefresh: () => void;
 }) {
+  const changes = useRepositoryStore(selectChanges);
+  const checkedPaths = useRepositoryStore(selectCheckedPaths);
+  const selectedPath = useRepositoryStore(selectSelectedPath);
+  const commitMessage = useRepositoryStore(selectCommitMessage);
+  const refreshing = useRepositoryStore(selectRefreshing);
+  const mutating = useRepositoryStore(selectMutating);
+  const mutationError = useRepositoryStore(selectMutationError);
+  const statusError = useRepositoryStore(selectStatusError);
+  const onSelect = useRepositoryStore((state) => state.selectPath);
+  const onToggle = useRepositoryStore((state) => state.togglePath);
+  const onToggleAll = useRepositoryStore((state) => state.toggleAll);
+  const onCommitMessage = useRepositoryStore((state) => state.setCommitMessage);
+  const error = mutationError ?? statusError;
+  const loading = refreshing && changes.length === 0;
+  const committing = mutating === 'commit';
   const [filter, setFilter] = useState('');
   const query = filter.trim().toLowerCase();
   const visible = useMemo(() => {
