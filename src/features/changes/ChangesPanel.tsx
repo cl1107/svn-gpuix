@@ -8,8 +8,9 @@ import { canCommit as commitReady } from '../../domain/operation';
 import {
   selectChanges,
   selectCheckedPaths,
+  selectBusy,
   selectCommitMessage,
-  selectMutating,
+  selectCommitting,
   selectMutationError,
   selectRefreshing,
   selectSelectedPath,
@@ -28,18 +29,14 @@ export function ChangesPanel({
   const changes = useRepositoryStore(selectChanges);
   const checkedPaths = useRepositoryStore(selectCheckedPaths);
   const selectedPath = useRepositoryStore(selectSelectedPath);
-  const commitMessage = useRepositoryStore(selectCommitMessage);
   const refreshing = useRepositoryStore(selectRefreshing);
-  const mutating = useRepositoryStore(selectMutating);
   const mutationError = useRepositoryStore(selectMutationError);
   const statusError = useRepositoryStore(selectStatusError);
   const onSelect = useRepositoryStore((state) => state.selectPath);
   const onToggle = useRepositoryStore((state) => state.togglePath);
   const onToggleAll = useRepositoryStore((state) => state.toggleAll);
-  const onCommitMessage = useRepositoryStore((state) => state.setCommitMessage);
   const error = mutationError ?? statusError;
   const loading = refreshing && changes.length === 0;
-  const committing = mutating === 'commit';
   const [filter, setFilter] = useState('');
   const query = filter.trim().toLowerCase();
   const visible = useMemo(() => {
@@ -48,16 +45,8 @@ export function ChangesPanel({
   }, [changes, query]);
 
   const selectedCount = changes.filter((change) => checkedPaths.has(change.path)).length;
-  const committablePaths = changes
-    .filter((change) => checkedPaths.has(change.path) && isCommittable(change))
-    .map((change) => change.path);
   const visibleChecked = visible.filter((change) => checkedPaths.has(change.path)).length;
   const allVisibleChecked = visible.length > 0 && visibleChecked === visible.length;
-  const canCommit = commitReady({
-    message: commitMessage,
-    paths: committablePaths,
-    mutating: Boolean(mutating),
-  });
 
   return (
     <div
@@ -185,52 +174,72 @@ export function ChangesPanel({
         </virtual-list>
       )}
 
-      <div
-        style={{
-          borderTopWidth: 1,
-          borderColor: theme.border,
-          padding: 20,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
+      <CommitComposer onCommit={onCommit} />
+    </div>
+  );
+}
+
+function CommitComposer({ onCommit }: { onCommit: () => void }) {
+  const changes = useRepositoryStore(selectChanges);
+  const checkedPaths = useRepositoryStore(selectCheckedPaths);
+  const commitMessage = useRepositoryStore(selectCommitMessage);
+  const busy = useRepositoryStore(selectBusy);
+  const committing = useRepositoryStore(selectCommitting);
+  const onCommitMessage = useRepositoryStore((state) => state.setCommitMessage);
+  const committablePaths = changes
+    .filter((change) => checkedPaths.has(change.path) && isCommittable(change))
+    .map((change) => change.path);
+  const canCommit = commitReady({
+    message: commitMessage,
+    paths: committablePaths,
+    mutating: busy,
+  });
+  return (
+    <div
+      style={{
+        borderTopWidth: 1,
+        borderColor: theme.border,
+        padding: 20,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+      }}
+    >
+      <text style={{ color: theme.text, fontSize: 13, fontFamily: font.ui, fontWeight: 600 }}>Commit</text>
+      <textarea
+        testId="commit-message"
+        value={commitMessage}
+        placeholder="Commit message…"
+        onChange={(event) => onCommitMessage(event.value ?? '')}
+        onKeyDown={(event) => {
+          if (event.key?.toLowerCase() === 'enter' && event.modifiers?.cmd) onCommit();
         }}
-      >
-        <text style={{ color: theme.text, fontSize: 13, fontFamily: font.ui, fontWeight: 600 }}>Commit</text>
-        <textarea
-          testId="commit-message"
-          value={commitMessage}
-          placeholder="Commit message…"
-          onChange={(event) => onCommitMessage(event.value ?? '')}
-          onKeyDown={(event) => {
-            if (event.key?.toLowerCase() === 'enter' && event.modifiers?.cmd) onCommit();
-          }}
-          style={{
-            height: 120,
-            padding: 12,
-            borderRadius: 8,
-            borderWidth: 1,
-            borderColor: theme.border,
-            backgroundColor: theme.bg,
-            color: theme.text,
-            fontSize: 13,
-          }}
-        />
-        <Button
-          label={
-            committing
-              ? 'Committing…'
-              : `Commit ${committablePaths.length} ${committablePaths.length === 1 ? 'file' : 'files'}`
-          }
-          size="lg"
-          grow
-          disabled={!canCommit}
-          onClick={onCommit}
-          testId="commit-button"
-        />
-        <text style={{ color: theme.textSubtle, fontSize: 10, fontFamily: font.ui }}>
-          Commits to current working copy only · ⌘↵
-        </text>
-      </div>
+        style={{
+          height: 120,
+          padding: 12,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: theme.border,
+          backgroundColor: theme.bg,
+          color: theme.text,
+          fontSize: 13,
+        }}
+      />
+      <Button
+        label={
+          committing
+            ? 'Committing…'
+            : `Commit ${committablePaths.length} ${committablePaths.length === 1 ? 'file' : 'files'}`
+        }
+        size="lg"
+        grow
+        disabled={!canCommit}
+        onClick={onCommit}
+        testId="commit-button"
+      />
+      <text style={{ color: theme.textSubtle, fontSize: 10, fontFamily: font.ui }}>
+        Commits to current working copy only · ⌘↵
+      </text>
     </div>
   );
 }
