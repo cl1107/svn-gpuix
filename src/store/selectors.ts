@@ -15,3 +15,5 @@ export const selectHistoryError = (state: RepositoryState) => state.historyError
 export const selectMutating = (state: RepositoryState) => state.mutating;
 export const selectMutationError = (state: RepositoryState) => state.mutationError;
 export const selectOperationLine = (state: RepositoryState) => state.operationLine;
+export const selectBusy = (state: RepositoryState) => state.mutating !== null;
+export const selectCommitting = (state: RepositoryState) => state.mutating === 'commit';
