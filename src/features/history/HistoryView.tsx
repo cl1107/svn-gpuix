@@ -1,6 +1,7 @@
+import { useTheme } from '../../app/ThemeContext';
 import { useMemo, useState } from 'react';
 import { Icon } from '../../app/icons';
-import { font, layout, theme } from '../../app/theme';
+import { font, layout } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import {
@@ -26,6 +27,8 @@ const actionTone: Record<PathAction, { color: string; background: string }> = {
 };
 
 export function HistoryView({ onRefresh }: { onRefresh: () => void }) {
+
+  const theme = useTheme();
   const revisions = useRepositoryStore(selectHistory);
   const selectedRevision = useRepositoryStore(selectSelectedRevision);
   const historyLoading = useRepositoryStore(selectHistoryLoading);
@@ -262,6 +265,7 @@ function ActionBadge({ action }: { action: PathAction }) {
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
+  const theme = useTheme();
   return (
     <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
       <text style={{ color: theme.textMuted, fontSize: 12, fontFamily: font.ui, width: 88 }}>{label}</text>
