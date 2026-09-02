@@ -1,58 +1,78 @@
-# SVN GUI — Product Requirements Document
+# Revision — Product Requirements Document
 
-**Status:** Draft / MVP
-**Target:** macOS ARM64
-**UI Framework:** GPUIX + React + TypeScript
-**Runtime:** Bun
-**SVN Backend:** System `svn` CLI
-
----
-
-# 1. 产品概述
-
-## 1.1 背景
-
-现有 SVN GUI 客户端普遍存在以下问题：
-
-- 商业软件需要付费；
-- 免费版本功能受限；
-- 一些客户端长期缺乏维护；
-- 部分客户端没有 Apple Silicon 原生版本；
-- UI 设计陈旧、功能复杂；
-- 日常开发实际只使用少量 SVN 功能。
-
-本项目目标不是构建 SmartSVN、Cornerstone 等完整 SVN IDE，而是提供一个：
-
-> 现代、快速、轻量、免费的日常 SVN GUI。
-
-产品重点覆盖开发者日常最常用的 SVN working copy 操作。
+**Version:** 0.2  
+**Status:** Implementation-aligned MVP  
+**Last updated:** 2026-09-02  
+**Target:** macOS ARM64  
+**UI:** GPUIX + React + TypeScript  
+**Runtime:** Bun  
+**SVN backend:** System `svn` CLI
 
 ---
 
-# 2. 产品目标
+# 1. 产品定位
 
-MVP 必须完整支持以下工作流：
+Revision 是一个现代、轻量、面向日常开发工作流的 macOS SVN GUI。
 
-1. Checkout SVN Repository
-2. 打开已有 SVN Working Copy
-3. 查看 SVN Status
-4. 查看 Changed Files
-5. 查看文件 Diff
-6. 勾选部分文件 Commit
-7. 输入 Commit Message
-8. SVN Update
-9. Revert
-10. Add
-11. Delete
-12. 查看 Log / History
+它不试图覆盖 SmartSVN / Cornerstone 一类完整 SVN IDE 的全部能力，而是优先把高频 working copy 操作做得直接、清晰、可预测：
 
-目标是使用户无需 Terminal 即可完成日常 SVN 工作。
+```text
+Open / Checkout
+→ Review Changes
+→ Inspect Diff
+→ Select Files
+→ Commit
+```
+
+以及：
+
+```text
+Update
+→ Edit
+→ Review
+→ Commit
+```
+
+核心原则：
+
+- Changes first；
+- 不模拟 Git staging/index；
+- 使用系统 SVN CLI，不内置 SVN 实现；
+- 单 working copy、单窗口；
+- 操作明确，破坏性行为必须确认；
+- UI 以 macOS 原生桌面应用体验为目标。
+
+---
+
+# 2. 当前 MVP 状态
+
+截至 2026-09-02，初版已经完成以下主流程：
+
+| 能力 | 状态 |
+| --- | --- |
+| 检测系统 SVN | 已实现 |
+| 打开 working copy | 已实现 |
+| Recent working copies | 已实现 |
+| Checkout | 已实现 |
+| Status / Changed Files | 已实现 |
+| 文件筛选 / 选择 | 已实现 |
+| Unified Diff | 已实现 |
+| Commit | 已实现 |
+| Update | 已实现 |
+| Add | 已实现 |
+| Delete / Missing → Delete | 已实现 |
+| Revert | 已实现 |
+| History / Log | 已实现 |
+| Working Copy 详情页 | 占位，未实现 |
+| Polish / 完整错误分类 / E2E / release build 验收 | 进行中 |
+
+MVP 当前重点已经从“功能首次落地”转为“行为收敛、错误体验、快捷键、构建与验收”。
 
 ---
 
 # 3. 非目标
 
-MVP 不实现：
+当前版本明确不做：
 
 - Branch / Tag 管理
 - Merge
@@ -61,1215 +81,559 @@ MVP 不实现：
 - Conflict Resolver
 - Repository Browser
 - Repository Administration
-- SVN Server 管理
 - Properties GUI
 - Lock / Unlock
 - Blame
 - Shelve
 - Changelist
-- Graph / Revision Graph
+- Revision Graph
+- 内置 SVN 凭据管理
 - SSH Key 管理
-- SVN 用户名密码管理
 - 自定义 diff tool
-- 多 repository 同窗口工作区
+- filesystem watcher
+- 多 repository 同窗口 workspace
+- Git 支持
+- Windows 支持
 - 插件系统
+- 遥测
 
-这些功能未来根据实际使用情况决定是否增加。
+这些能力只有在 MVP 稳定后、且有明确使用需求时再进入规划。
 
 ---
 
 # 4. 目标用户
 
-主要目标用户：
+主要用户：
 
-- 软件开发人员
-- 使用已有 SVN repository 的公司项目
-- 日常 SVN 操作相对简单
-- 希望使用现代 GUI
-- 不希望购买完整 SVN 商业客户端
-- Apple Silicon Mac 用户
+- 使用 SVN 维护公司或遗留项目的软件开发者；
+- 日常需求集中在 update / status / diff / commit；
+- 希望避免频繁使用 Terminal；
+- 不需要复杂 SVN 管理能力；
+- 使用 Apple Silicon Mac。
 
-典型使用模式：
-
-```text
-打开项目
-    ↓
-查看修改
-    ↓
-查看 Diff
-    ↓
-勾选文件
-    ↓
-填写 Commit Message
-    ↓
-Commit
-```
-
-以及：
-
-```text
-Update
-↓
-编辑代码
-↓
-Review Changes
-↓
-Commit
-```
+成功标准是：用户无需 Terminal 即可完成大多数日常 working copy 操作。
 
 ---
 
-# 5. 产品设计原则
+# 5. 信息架构
 
-## 5.1 简单优先
-
-用户进入 working copy 后立即看到 Changes。
-
-不要：
-
-- 首页 Dashboard
-- Repository Tree
-- Workspace 管理
-- 大量工具栏按钮
-- 多级配置菜单
-
----
-
-## 5.2 Changes First
-
-主要界面围绕：
+应用只有两个顶层状态：
 
 ```text
-Changed Files + Diff + Commit
+Welcome
+Repository
 ```
 
-设计。
-
----
-
-## 5.3 不重新发明 SVN
-
-业务逻辑依赖用户系统中的：
-
-```text
-svn
-```
-
-应用本身仅负责：
-
-- 执行命令
-- 解析结果
-- 展示 UI
-- 管理用户操作流程
-
----
-
-## 5.4 不模拟 Git
-
-MVP 不提供：
-
-- Stage
-- Index
-- Staged / Unstaged
-
-用户通过 checkbox 选择本次需要提交的文件。
-
-例如：
+Repository 内部使用 Sidebar 页面：
 
 ```text
 Changes
-
-☑ M src/App.ts
-☑ M src/api.ts
-☐ M README.md
+History
+Working Copy
 ```
 
-执行：
+当前 `Working Copy` 页面仅为占位，正式内容不属于已完成 MVP 功能。
+
+## 5.1 Window / Titlebar
+
+- 默认窗口：1440 × 960；
+- 使用透明 macOS titlebar；
+- 产品名：Revision；
+- Titlebar 提供：
+  - Open Working Copy；
+  - Welcome Screen；
+- 业务主操作仍放在对应页面，而不是构建传统大型工具栏。
+
+## 5.2 Repository Shell
+
+主界面统一为：
 
 ```text
-svn commit src/App.ts src/api.ts
+Sidebar + List + Detail
 ```
 
----
-
-# 6. 主界面
-
-Figma 设计稿以 **1440 × 960** 为基准画布。Working Copy 打开后，窗口采用：
+Changes：
 
 ```text
-macOS Titlebar
-+
 Sidebar
-+
-Master / Detail
++ Changed Files / Commit
++ Diff
 ```
 
-的桌面应用布局，而不是传统“顶部工具栏 + 左侧文件树 + 全宽底部提交栏”。
-
-参考结构：
+History：
 
 ```text
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ ● ● ●   Revision                                             macOS Titlebar │
-├──────────────┬────────────────────────┬─────────────────────────────────────┤
-│ Sidebar      │ Changes Pane           │ Diff Pane                           │
-│ 238px        │ 396px                  │ flex                                │
-│              │                        │                                     │
-│ Workspace    │ Changes       Refresh  │ selected/file/path    Revert   …    │
-│ Switcher     │ 6 files                │ Modified · +18 · -6                 │
-│              │ [ Filter changed... ]  ├─────────────────────────────────────┤
-│ Changes      │ ☑ Select all           │                                     │
-│ History      │                        │ Unified Diff                        │
-│ Working Copy │ ☑ M UserCard.vue       │                                     │
-│              │ ☑ M user.ts            │                                     │
-│ SVN          │ ☑ A profile.vue        │                                     │
-│ r18427       │ ...                    │                                     │
-│ Up to date   │                        │                                     │
-│ [ Update ]   │ ─────────────────────  │                                     │
-│              │ Commit                 │                                     │
-│ Quick actions│ [ Commit message... ]  │                                     │
-│              │ [ Commit 6 files ]     │                                     │
-└──────────────┴────────────────────────┴─────────────────────────────────────┘
+Sidebar
++ Revision List
++ Revision Detail
 ```
 
-### 6.1 Titlebar
-
-窗口顶部保留约 **44px** 的 macOS 原生窗口区域：
-
-- 左侧为 traffic-light window controls；
-- 展示产品名称 `Revision`；
-- 不承载 Refresh / Update / History 等业务工具栏操作。
-
-业务操作放在其对应的内容区域内，减少顶部工具栏密度。
-
-### 6.2 Sidebar
-
-Working Copy 页面固定显示约 **238px** 宽的 Sidebar。
-
-自上而下包含：
-
-1. **Workspace Switcher**
-   - Working Copy 名称；
-   - 本地路径；
-   - 切换入口。
-2. **Workspace Navigation**
-   - Changes；
-   - History；
-   - Working Copy。
-3. **SVN Update Card**
-   - 当前 revision；
-   - working copy 状态；
-   - Update 按钮。
-4. **Quick actions**
-   - Add unversioned files；
-   - Revert selected；
-   - More SVN actions。
-5. 底部 SVN CLI 版本信息。
-
-Sidebar 负责导航和 working copy 级操作，不承担 Changed Files 列表。
-
-### 6.3 Changes / Diff 主工作区
-
-`Changes` 页面为三栏结构：
-
-| 区域 | Figma 参考宽度 | 说明 |
-| --- | ---: | --- |
-| Sidebar | 238px | 固定 |
-| Changed Files Pane | 396px | 固定 / 可在适配时小幅调整 |
-| Diff Pane | 804px @ 1440px | flex-grow |
-
-Changed Files Pane 内部从上到下为：
-
-```text
-Page Header
-File count + Refresh
-Search
-Select all / selected count
-Changed Files list
-Divider
-Commit composer
-```
-
-Commit composer **属于中间 Changes Pane**，不再作为横跨整个窗口的底部固定面板。
-
-Diff Pane 为主要弹性区域，顶部包含当前文件信息和文件级操作，下面展示 diff 内容。
-
-### 6.4 History 主工作区
-
-切换到 `History` 后保留同一 Sidebar，中间和右侧切换为：
-
-```text
-Sidebar 238px
-+
-Revision List 454px
-+
-Revision Detail 746px @ 1440px
-```
-
-即 Changes 与 History 共用统一的 `Sidebar + List + Detail` 信息架构。
-
-### 6.5 分隔与滚动
-
-- Sidebar / List / Detail 之间使用 1px 分隔线；
-- Changed Files / Revision List 独立滚动；
-- Diff / Revision Detail 独立滚动；
-- 窗口缩放时优先让右侧 Detail 区域伸缩，中间列表保持稳定可读宽度。
----
-
-# 7. 功能需求
-
-## FR-01 打开 Working Copy
-
-用户点击：
-
-```text
-Open Working Copy
-```
-
-应用允许选择一个目录。
-
-选择后执行 SVN working copy 验证。
-
-成功后进入主界面。
-
-验证失败：
-
-```text
-This folder is not an SVN working copy.
-```
-
-不能进入 repository 页面。
+这种结构是当前实现基准，旧文档中的“顶栏 + 全宽底部 Commit”不再适用。
 
 ---
 
-## FR-02 Recent Working Copies
+# 6. Welcome
 
-应用保存最近打开过的 working copy：
+未打开 working copy 时展示 Welcome Screen。
 
-```text
-Recent
+主要入口：
 
-Project A
-~/Projects/project-a
+- Open Working Copy
+- Checkout Repository
+- Recent Working Copies
 
-Project B
-~/Work/project-b
+启动时检测：
+
+```bash
+svn --version --quiet
 ```
 
-最多保存：
+若未找到 SVN，必须明确提示用户安装 Subversion 后重启应用。
 
-```text
-10
+## 6.1 Recent
+
+- 最多保留 10 条；
+- 最近打开的排最前；
+- 保存绝对路径与最近打开时间；
+- 不存在的路径显示 `Missing`；
+- 点击 Recent 会重新验证 working copy；
+- 成功打开后更新最近记录。
+
+---
+
+# 7. Open Working Copy
+
+用户通过系统目录选择器选择目录。
+
+验证使用：
+
+```bash
+svn info --xml
 ```
 
-条。
+成功：
 
-点击即可打开。
+- 进入 Repository；
+- 获取 repository URL / root / revision；
+- 拉取 status；
+- 写入 Recent。
 
-不存在的路径自动标记失效。
+失败：
+
+- 非 working copy：显示 `This folder is not an SVN working copy.`；
+- 目录不存在：显示 missing working copy 错误；
+- 不进入 Repository。
+
+快捷键：
+
+```text
+⌘O
+```
 
 ---
 
 # 8. Checkout
 
-用户点击：
+Checkout Dialog 字段：
 
-```text
-Checkout Repository
+- Repository URL
+- Destination
+
+执行：
+
+```bash
+svn checkout URL DEST --non-interactive
 ```
 
-弹出 Checkout Dialog。
+行为：
 
-字段：
+- 执行期间显示最新 stdout 行；
+- 成功后验证并自动打开新 working copy；
+- 自动写入 Recent；
+- 失败展示 SVN 错误；
+- 认证失败不提供内置登录 UI，提示用户先在 Terminal 完成 SVN 认证。
 
-```text
-Repository URL
-Destination
-```
-
-例如：
-
-```text
-Repository URL
-https://svn.example.com/project/trunk
-
-Destination
-/Users/user/Projects/project
-```
-
-按钮：
+快捷键：
 
 ```text
-Cancel
-Checkout
+⌘⇧O
 ```
-
-执行期间：
-
-```text
-Checking out…
-```
-
-展示简单进度输出。
-
-成功：
-
-```text
-Checked out revision 128.
-```
-
-随后自动打开新 working copy。
-
-失败：
-
-显示 SVN stderr。
 
 ---
 
-# 9. SVN Status
+# 9. Status / Changed Files
 
-打开 repository 后执行：
+状态读取：
 
-```text
-svn status
+```bash
+svn status --xml --ignore-externals
 ```
-
-并生成 Changes List。
 
 支持状态：
 
-| SVN 状态    | UI  |
-| ----------- | --- |
-| modified    | M   |
-| added       | A   |
-| deleted     | D   |
-| unversioned | ?   |
-| missing     | !   |
-| replaced    | R   |
-| conflicted  | C   |
-| ignored     | I   |
-| external    | X   |
+| SVN | UI | 默认勾选 | 可直接提交 |
+| --- | --- | --- | --- |
+| modified | M | 是 | 是 |
+| added | A | 是 | 是 |
+| deleted | D | 是 | 是 |
+| replaced | R | 是 | 是 |
+| unversioned | ? | 否 | 否 |
+| missing | ! | 否 | 否 |
+| conflicted | C | 否 | 否 |
+| obstructed | O | 否 | 否 |
+| incomplete | ~ | 否 | 否 |
+| ignored | I | 隐藏 | 否 |
+| external | X | 隐藏 | 否 |
 
-MVP 默认隐藏：
+Changed Files：
 
-```text
-ignored
-external
-normal
-```
+- flat list，不构建文件树；
+- 可按路径文本筛选；
+- 排序按目录后文件名；
+- row selection 与 commit checkbox 独立；
+- Refresh 后尽量保留用户原选择；
+- 新出现的 M/A/D/R 自动按默认规则勾选。
 
----
+Sidebar 状态文案基于**本地变更数量**：
 
-# 10. Changed Files
+- 无本地变更：`Up to date`
+- 有变更：`N local changes`
 
-Changed Files 位于主界面的 **中间 Changes Pane**，左侧 Sidebar 仅用于 workspace 导航和 SVN 操作。
-
-Pane 顶部包含：
-
-```text
-Changes
-6 files                      Refresh
-
-[ Filter changed files ]
-
-☑ Select all                 6 selected
-────────────────────────────────────
-```
-
-文件列表使用 flat list，不构建 folder tree。
-
-每行视觉结构：
-
-```text
-Checkbox
-Status Badge
-Relative Path
-Status Label
-Disclosure / selection affordance
-```
-
-例如：
-
-```text
-☑  M  src/components/UserCard.vue
-      Modified
-
-☑  A  src/pages/profile.vue
-      Added
-```
-
-状态使用紧凑 Badge（`M / A / D / ? / ! / R / C`），路径作为主信息，状态名称作为 secondary text。
-
-排序优先级：
-
-1. path
-2. filename
-
-点击文件行后，在右侧 Diff Pane 展示该文件内容；checkbox 仍只控制本次 Commit Selection。
----
-
-# 11. Checkbox 规则
-
-默认：
-
-```text
-Modified       checked
-Added          checked
-Deleted        checked
-Missing        unchecked
-Unversioned    unchecked
-Conflicted     unchecked
-```
-
-原因：
-
-`?` 文件未经 `svn add` 不应该直接进入 commit。
-
-Missing 文件未经确认也不应该自动 schedule delete。
+当前没有执行 `svn status -u`，因此这不是远端同步状态判断。
 
 ---
 
-# 12. 文件选择
+# 10. Diff
 
-点击 Changed File：
+选择 Changed File 后加载右侧 Diff。
 
-```text
-select file
+文本文件：
+
+```bash
+svn diff --git -- PATH
 ```
 
-与：
-
-```text
-checkbox
-```
-
-是两个独立动作。
-
-点击 row：
-
-```text
-打开 Diff
-```
-
-点击 checkbox：
-
-```text
-改变 Commit Selection
-```
-
-避免类似：
-
-```text
-点击文件 = 自动加入提交
-```
-
-这种隐式行为。
-
----
-
-# 13. Diff
-
-点击 Modified / Added / Deleted 文件：
-
-右侧显示 Unified Diff。
-
-Modified：
-
-```text
-base → working copy
-```
-
-Added：
-
-展示新文件内容。
-
-Deleted：
-
-展示删除内容。
-
-Unversioned：
-
-显示：
-
-```text
-Unversioned file
-
-Add this file to SVN to include it in a commit.
-```
-
-并提供：
-
-```text
-Add
-```
-
-按钮。
-
-Binary File：
-
-显示：
-
-```text
-Binary file changed
-Diff preview is unavailable.
-```
-
----
-
-# 14. Commit Message
-
-Commit 区域嵌入 **Changes Pane 下半部**，位于 Changed Files list 之后，通过 divider 与文件列表分隔。
-
-它不是横跨主窗口的固定底栏。
-
-布局：
-
-```text
-────────────────────────────────────
-Commit
-
-┌──────────────────────────────────┐
-│ Fix profile avatar fallback...   │
-│                                  │
-│ Optional details…     ⌘↵ commit  │
-└──────────────────────────────────┘
-
-[          Commit 6 files          ]
-
-Commits to current working copy only
-```
-
-Figma 参考：
-
-- 中栏左右 padding：20px；
-- Commit Message：约 120px 高；
-- Commit Button：中栏内全宽，约 42px 高；
-- 快捷键提示位于输入区域右下角。
-
-包含：
-
-```text
-Commit Message textarea
-Keyboard shortcut hint
-Commit button
-Selected file count
-Secondary helper text
-```
-
-例如：
-
-```text
-Commit 3 Files
-```
-
-Commit Message 必须非空。
-
-空 message 时 Commit disabled。
-
-切换到 History 等其他 Sidebar 页面时，整个中间 Pane 被对应内容替换，因此 Commit 区域不显示。
----
-
-# 15. Commit
-
-Commit 前显示：
-
-```text
-3 files selected
-```
-
-提交过程中：
-
-```text
-Committing…
-```
-
-禁止：
-
-- 再次 Commit
-- Update
-- Revert
-- Add
-- Delete
-
-成功后：
-
-```text
-Committed revision 129
-```
-
-并：
-
-1. 清空 Commit Message
-2. 清空 selection
-3. Refresh Status
-4. Refresh repository revision
-
----
-
-# 16. Update
-
-Update 不放在全局 Toolbar，而放在 Sidebar 的 **SVN Update Card** 中。
-
-布局示例：
-
-```text
-SVN
-
-┌────────────────────────┐
-│ Working copy           │
-│ r18427       [ Update ]│
-│ Up to date             │
-└────────────────────────┘
-```
-
-执行整个 Working Copy：
-
-```text
-svn update
-```
-
-操作期间：
-
-```text
-Updating…
-```
-
-成功后：
-
-```text
-Updated to revision 130
-```
-
-随后：
-
-```text
-Refresh Status
-```
-
-Update Card 中的 revision 和状态同步更新。
----
-
-# 17. Revert
-
-Changed File context action：
-
-```text
-Revert
-```
-
-也允许多选文件后：
-
-```text
-Revert Selected
-```
-
-必须弹确认：
-
-```text
-Revert 3 files?
-
-Local modifications will be permanently discarded.
-
-Cancel
-Revert
-```
-
-Revert 成功后自动刷新。
-
----
-
-# 18. Add
-
-对：
-
-```text
-Unversioned ?
-```
-
-文件显示：
-
-```text
-Add
-```
-
-执行后：
-
-状态变为：
-
-```text
-A
-```
-
-并默认 checked。
-
----
-
-# 19. Delete
-
-对于版本控制中的文件：
-
-```text
-Delete
-```
-
-弹确认：
-
-```text
-Delete "foo.ts"?
-
-The file will be removed from disk and scheduled for deletion in SVN.
-
-Cancel
-Delete
-```
-
-成功后：
-
-```text
-D foo.ts
-```
-
----
-
-# 20. Missing File
-
-对于：
-
-```text
-! foo.ts
-```
-
-提供：
-
-```text
-Mark as Deleted
-```
-
-执行 SVN delete，使：
-
-```text
-!
-```
-
-转换为：
-
-```text
-D
-```
-
----
-
-# 21. History
-
-History 通过 Sidebar 中的：
-
-```text
-History
-```
-
-进入，不通过顶部 Toolbar 打开独立页面。
-
-History 沿用主界面的三栏结构：
-
-```text
-┌──────────────┬───────────────────────────┬──────────────────────────────────┐
-│ Sidebar      │ Revision List             │ Revision Detail                  │
-│ 238px        │ 454px                     │ flex / 746px @ 1440              │
-│              │                           │                                  │
-│ Changes      │ History          Refresh  │ r18431              Copy revision│
-│ History      │ Repository revisions      │ author · date                    │
-│ Working Copy │                           │                                  │
-│              │ [ Search history... ]     │ Commit message                   │
-│ SVN Update   │ [All] [My] [Branch]       │ ...                              │
-│              │                           │                                  │
-│              │ r18431  message           │ Changed Paths                    │
-│              │ author   date             │ M / A / D path                   │
-│              │                           │                                  │
-│              │ r18430  message           │ Revision info                    │
-│              │ ...                       │ Revision / Author / Repository   │
-└──────────────┴───────────────────────────┴──────────────────────────────────┘
-```
-
-### 21.1 Revision List
-
-中间 Revision List 顶部包含：
-
-- `History` 标题；
-- `Repository revisions` secondary text；
-- Refresh；
-- 搜索框；
-- 设计稿中的紧凑 filter chips；
-- revision 列表。
-
-每条 revision 使用列表卡片呈现，而不是传统多列表格。
-
-主要信息：
-
-```text
-Revision
-Author
-Date
-Commit Message
-```
-
-默认加载：
-
-```text
-100 revisions
-```
-
-未来可以增加 pagination。
-
-### 21.2 Revision Detail
-
-点击 revision 后，右侧 Revision Detail 展示：
-
-```text
-Revision header
-Author
-Date
-Copy revision action
-
-Commit Message
-
-Changed Paths
-
-Revision Info
-- Revision
-- Author
-- Repository
-```
-
-Changed Paths 使用状态 Badge + path 的列表形式。
-
-MVP 不要求 revision diff。
----
-
-# 22. Refresh
-
-Refresh 为当前内容 Pane 的上下文操作，不使用全局 Toolbar。
-
-Changes 页面：
-
-```text
-Changes                           Refresh
-6 files
-```
-
-刷新：
-
-```text
-svn status
-svn info
-```
-
-History 页面在 Revision List Header 的相同位置提供 Refresh，以保持页面结构一致。
-
-文件操作完成后自动 Refresh。
----
-
-# 23. Repository 信息
-
-Repository / Working Copy 信息主要分布在 Sidebar，而不是窗口 Topbar。
-
-### 23.1 Workspace Switcher
-
-Sidebar 顶部展示：
-
-```text
-Working Copy Name
-Local Path
-```
-
-例如：
-
-```text
-frontend-web
-~/work/frontend-web
-```
-
-### 23.2 SVN Update Card
-
-显示：
-
-```text
-Working copy
-Revision
-Sync status
-Update
-```
-
-例如：
-
-```text
-r18427
-Up to date
-```
-
-### 23.3 Detail
-
-Repository URL 等更完整信息可在 Working Copy 页面或 History 的 Revision Info 中展示。
-
-窗口最上方 Titlebar 仅作为应用级 chrome，默认不再承担 Working Copy Name / Revision / Refresh / Update / History 等业务信息。
----
-
-# 24. Welcome Screen
-
-没有打开 Working Copy 时，不显示 Working Copy Sidebar。
-
-Titlebar 下方使用全宽 Welcome Shell：
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ ● ● ●   Revision                                            │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│                    A focused SVN client                      │
-│   Open an existing working copy, or check out a repository   │
-│                                                              │
-│       ┌────────────────────┐   ┌────────────────────┐         │
-│       │ Open working copy  │   │ Checkout repository│         │
-│       │                    │   │                    │         │
-│       │ [ Choose folder… ] │   │ [ Checkout… ]     │         │
-│       └────────────────────┘   └────────────────────┘         │
-│                                                              │
-│       Recent working copies                                  │
-│       ┌──────────────────────────────────────────────┐        │
-│       │ frontend-web       r18427   Up to date      │        │
-│       │ ~/work/frontend-web                         │        │
-│       ├──────────────────────────────────────────────┤        │
-│       │ admin-console      r9931    3 local changes │        │
-│       │ ~/work/admin-console                        │        │
-│       └──────────────────────────────────────────────┘        │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-```
-
-参考布局：
-
-- 主内容最大宽度约 820px，并居中；
-- `Open working copy` 与 `Checkout repository` 两张 action card 横向并列；
-- 单卡参考宽度约 390px；
-- Recent Working Copies 位于 action cards 下方；
-- Recent item 展示项目名、本地路径、revision 与 working copy 状态；
-- 点击 Recent item 直接打开对应 Working Copy。
-
-Figma 画布底部还放置了 `Checkout preview` 用于展示 Repository URL / Local Path / Configure 的视觉样式；实际 Checkout 流程仍按第 8 节以 Checkout Dialog 承载，不作为 Welcome Screen 常驻模块。
-
-不增加 Dashboard、Repository Browser 等额外首页模块。
----
-
-# 25. Loading State
-
-长操作：
-
-```text
-Checkout
-Update
-Commit
-```
-
-必须有明确运行状态。
-
-例如：
-
-```text
-Updating working copy…
-```
-
-禁止整个窗口假死。
-
----
-
-# 26. Error Handling
-
-SVN command failure 统一使用 Error Banner / Dialog。
-
-包含：
-
-```text
-Operation
-Human readable message
-Original SVN output
-```
-
-例如：
-
-```text
-Update failed
-
-Working copy is locked.
-
-svn: E155004: Working copy ...
-```
-
-高级信息默认折叠：
-
-```text
-Show Details
-```
-
----
-
-# 27. Authentication
-
-MVP 不实现 credentials UI。
-
-使用系统 SVN 已保存 credentials。
-
-如果需要登录：
-
-```text
-Authentication required.
-
-Authenticate using the SVN command line first, then retry.
-```
-
-应用：
-
-- 不保存 password；
-- 不保存 SSH private key；
-- 不绕过 SSL certificate validation。
-
----
-
-# 28. 操作互斥
-
-以下写操作不能同时执行：
-
-```text
-checkout
-commit
-update
-revert
-add
-delete
-```
-
-同时只能存在一个 mutating SVN operation。
-
-读取操作：
-
-```text
-status
-diff
-info
-log
-```
-
-可以异步执行，但 Diff 请求必须支持取消旧请求。
-
----
-
-# 29. Keyboard Shortcuts
-
-MVP：
-
-```text
-Cmd+O        Open Working Copy
-Cmd+Shift+O  Checkout
-Cmd+R        Refresh
-Cmd+Enter    Commit
-Esc          Close dialog
-```
-
-Commit shortcut 仅当：
-
-```text
-message != empty
-selected files > 0
-no operation running
-```
-
-时有效。
-
----
-
-# 30. 性能目标
-
-典型 Working Copy：
-
-```text
-< 10,000 files
-< 500 changed files
-```
+结果分为：
+
+- text
+- binary
+- unversioned
 
 要求：
 
-Status 完成后 UI：
+- 切换文件时立即进入 loading；
+- 新请求取消旧请求；
+- 旧请求结果不得覆盖新选中文件；
+- Refresh / mutation 后 diff cache 失效。
 
-```text
-< 100ms
-```
+Unversioned：
 
-展示 Changed Files。
+- 不调用 SVN diff；
+- 显示“未纳入版本控制”空态；
+- 提供 Add。
 
-Diff 切换文件后立即显示 Loading。
+Binary：
 
-不要因为读取 Diff 阻塞主线程。
+- 显示 binary changed；
+- 不尝试文本预览。
 
-Changed Files 使用 virtual list。
+当前 MVP 不提供 side-by-side diff、hunk staging 或外部 diff tool。
 
 ---
 
-# 31. 数据持久化
+# 11. Commit
 
-MVP 仅保存：
+Commit composer 位于 Changes Pane 底部，不横跨整个窗口。
+
+内容：
+
+- Commit Message
+- 当前可提交文件数量
+- Commit button
+- `⌘↵` 提示
+
+可提交条件：
+
+- message trim 后非空；
+- 至少一个勾选项属于 M/A/D/R；
+- 当前没有 mutation 正在执行。
+
+执行：
+
+```bash
+svn commit --non-interactive -m MESSAGE -- PATHS
+```
+
+成功后：
+
+1. 清空 commit message；
+2. 清空 selection；
+3. Refresh repository info + status；
+4. 更新 revision；
+5. diff cache 失效。
+
+失败后：
+
+- 保留 message；
+- 保留 selection；
+- 显示错误。
+
+快捷键：
 
 ```text
-recentWorkingCopies
-lastWorkingCopy
-window size
+⌘Enter
 ```
+
+---
+
+# 12. Working Copy Mutations
+
+所有 mutation 共享单一操作锁，同一时间只能执行一个：
+
+- commit
+- update
+- add
+- delete
+- revert
+- checkout
+
+mutation 期间禁用其它 destructive / write 操作。
+
+## 12.1 Update
+
+执行整个 working copy：
+
+```bash
+svn update --non-interactive
+```
+
+- Sidebar Update Card 触发；
+- 显示最新 stdout 行；
+- 成功后自动 Refresh。
+
+## 12.2 Add
+
+仅针对 unversioned：
+
+```bash
+svn add --parents -- PATHS
+```
+
+入口：
+
+- Diff 空态单文件 Add；
+- Sidebar Add unversioned files。
+
+Add 成功后目标文件保持勾选，便于继续 commit。
+
+## 12.3 Revert
+
+只允许文件，不对目录执行递归 revert。
+
+执行前必须确认：
+
+```text
+Local modifications will be permanently discarded.
+```
+
+支持：
+
+- 当前文件；
+- 已勾选的可 revert 文件。
+
+## 12.4 Delete
+
+版本控制中的可删除项执行 SVN delete。
+
+执行前必须确认。
+
+Missing 文件使用 force delete，将 `!` 转为 SVN scheduled deletion：
+
+```bash
+svn delete --force -- PATH
+```
+
+当前 UI 中 Sidebar 提供 Delete selected，Diff header 也提供单文件 Delete。
+
+---
+
+# 13. History
+
+History 是 Repository Shell 内的 Sidebar 页面。
+
+读取：
+
+```bash
+svn log --xml -v -l 100 -r HEAD:1 -- .
+```
+
+说明：
+
+- 默认最多 100 条；
+- 范围针对当前 working copy URL；
+- 使用 `HEAD:1` 避免 mixed-revision working copy 默认 BASE 范围漏掉新 revision。
+
+Revision List：
+
+- revision；
+- 首行 commit message；
+- author；
+- date；
+- 文本搜索；
+- Refresh。
+
+搜索覆盖：
+
+- message；
+- author；
+- revision。
+
+Revision Detail：
+
+- revision；
+- author；
+- date；
+- 完整 commit message；
+- changed paths；
+- repository URL。
+
+当前未实现：
+
+- My commits filter；
+- Branch filter；
+- revision diff；
+- pagination。
+
+这些不是当前 MVP 的验收阻塞项。
+
+---
+
+# 14. Working Copy 页面
+
+Sidebar 已存在 `Working Copy` 导航项，但当前页面只展示占位文案。
+
+因此本版本不应把以下能力描述为“已实现”：
+
+- working copy 元数据详情；
+- repository root / UUID 管理界面；
+- cleanup；
+- relocate；
+- switch；
+- properties。
+
+是否补齐基础详情页，作为 MVP polish 后的独立小迭代决定。
+
+---
+
+# 15. 错误与认证
+
+当前已覆盖：
+
+- SVN CLI not found；
+- not a working copy；
+- missing recent path；
+- authentication required；
+- command failed；
+- cancelled command。
+
+认证策略：
+
+- 所有 SVN write/network 命令使用 `--non-interactive`；
+- Revision 不保存用户名密码；
+- 遇到认证问题，提示用户先通过系统 SVN 在 Terminal 建立凭据。
+
+待补齐：
+
+- network；
+- working copy locked；
+- conflict 等错误的更细分类；
+- Error Banner 的详情展示一致性。
+
+---
+
+# 16. 快捷键
+
+当前实现：
+
+| 快捷键 | 行为 |
+| --- | --- |
+| ⌘O | Open Working Copy |
+| ⌘⇧O | Checkout |
+| ⌘Enter | Commit |
+| Esc | 关闭确认框 / workspace switcher 等可关闭 UI |
+
+待补：
+
+| 快捷键 | 行为 |
+| --- | --- |
+| ⌘R | Refresh 当前页面 |
+
+---
+
+# 17. 数据持久化
+
+设置文件：
+
+```text
+~/Library/Application Support/Revision/settings.json
+```
+
+当前保存：
+
+- recentWorkingCopies
+- lastWorkingCopy
+- 可选 window size
+
+写入采用临时文件 + rename 的 atomic write。
 
 不保存：
 
-```text
-commit message
-password
-SVN output
-diff
-repository content
-```
+- SVN 密码；
+- commit message draft；
+- diff cache；
+- history cache。
 
 ---
 
-# 32. MVP Definition of Done
+# 18. MVP Definition of Done
 
-只有满足以下条件，才认为 MVP 完成：
+功能层面：
 
-- 可以 checkout repository
-- 可以打开 working copy
-- 可以识别非法 working copy
-- 可以显示 changed files
-- 可以查看 modified file diff
-- 可以 add unversioned file
-- 可以 delete versioned file
-- 可以 revert
-- 可以选择部分文件
-- 可以 commit selected files
-- 可以 update
-- 可以查看最近 100 条 log
-- 所有操作失败均不会导致应用崩溃
-- SVN CLI 不存在时有明确错误
-- macOS ARM64 可正常运行
-- 核心 SVN parser 有自动化测试
-- 核心 UI 有 screenshot tests
-- README 包含运行方式
+- [x] 可检测 SVN CLI
+- [x] 可打开合法 working copy
+- [x] 非 working copy 有明确错误
+- [x] Recent 最多 10 条
+- [x] Checkout 成功后自动打开
+- [x] 可查看真实 Changed Files
+- [x] 可筛选、选择文件
+- [x] 可查看真实 diff
+- [x] 可部分文件 commit
+- [x] 可 Update
+- [x] 可 Add
+- [x] 可 Delete / Missing delete
+- [x] 可 Revert
+- [x] 可查看 100 条 History 与详情
+
+Polish / release gate：
+
+- [ ] Cmd+R
+- [ ] 完整错误分类
+- [ ] Error Banner / Show Details 收敛
+- [ ] 核心 parser 与集成测试最终补齐
+- [ ] 关键 UI screenshot 验收
+- [ ] 至少一条 E2E happy path
+- [ ] `bun run build` 的 unsigned macOS 开发构建验收
 
 ---
 
-# 33. MVP 成功标准
+# 19. 后续优先级
 
-对于一个已经安装 SVN CLI 的开发者，从第一次启动到完成：
+MVP 完成后优先考虑：
 
-```text
-Open Working Copy
-→ Review Diff
-→ Select Files
-→ Commit
-```
+1. Working Copy 基础详情；
+2. History pagination；
+3. 更完整错误恢复；
+4. 可选系统通知 / 操作结果提示；
+5. 用户真实使用反馈驱动的小功能。
 
-整个过程中不需要打开 Terminal。
-
-除首次 SVN authentication 外，日常工作均可在 GUI 内完成。
+Branch / merge / conflict editor 等复杂 SVN 能力不默认进入下一阶段。
