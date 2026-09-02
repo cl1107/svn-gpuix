@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useStore } from 'zustand/react';
 import { addShortcutListener } from '../../app/shortcuts';
 import { font, layout, theme } from '../../app/theme';
 import type { CommitClient } from '../../application/commitChanges';
@@ -17,12 +18,7 @@ import type { OperationManager } from '../../application/operationManager';
 import { refreshWorkingCopy, type WorkingCopyReader } from '../../application/refreshRepository';
 import { Dialog } from '../../components/Dialog';
 import { ErrorBanner } from '../../components/ErrorBanner';
-import {
-  fixtureChanges,
-  fixtureCheckedPaths,
-  fixtureHistory,
-  fixturePatch,
-} from '../../design/fixtures';
+import { fixturePatch } from '../../design/fixtures';
 import {
   isAddable,
   isCommittable,
@@ -34,8 +30,25 @@ import type { DiffResult } from '../../domain/diff';
 import type { AppError } from '../../domain/error';
 import { canCommit, lastOutputLine, type MutationKind } from '../../domain/operation';
 import type { Repository } from '../../domain/repository';
-import type { SvnRevision } from '../../domain/revision';
 import { CommandError } from '../../services/svn/commandRunner';
+import { createRepositoryStore } from '../../store/repositoryStore';
+import {
+  selectChanges,
+  selectCheckedPaths,
+  selectCommitMessage,
+  selectHistory,
+  selectHistoryError,
+  selectHistoryLoading,
+  selectMutating,
+  selectMutationError,
+  selectOperationLine,
+  selectPage,
+  selectRefreshing,
+  selectRepository,
+  selectSelectedPath,
+  selectSelectedRevision,
+  selectStatusError,
+} from '../../store/selectors';
 import { ChangesPanel } from '../changes/ChangesPanel';
 import { DiffPanel, type DiffView } from '../changes/DiffPanel';
 import { HistoryView } from '../history/HistoryView';
@@ -76,31 +89,33 @@ export function RepositoryScreen({
   onSwitchWorkingCopy?: (path: string) => void;
 }) {
   const live = Boolean(repository && svn);
-  const [page, setPage] = useState<RepositoryPage>(initialPage);
-  const [liveRepo, setLiveRepo] = useState<Repository | undefined>(repository);
-  const [changes, setChanges] = useState<WorkingCopyChange[]>(live ? [] : fixtureChanges);
-  const [checkedPaths, setCheckedPaths] = useState<Set<string>>(
-    () => new Set(live ? [] : fixtureCheckedPaths),
+  const [store] = useState(() =>
+    createRepositoryStore({
+      live,
+      page: initialPage,
+      repository,
+      initialCommitMessage,
+    }),
   );
-  const [selectedPath, setSelectedPath] = useState<string | null>(
-    live ? null : (fixtureChanges[0]?.path ?? null),
-  );
-  const [commitMessage, setCommitMessage] = useState(
-    live ? (initialCommitMessage ?? '') : 'Fix profile avatar fallback and API mapping',
-  );
-  const [history, setHistory] = useState<SvnRevision[]>(live ? [] : fixtureHistory);
-  const [selectedRevision, setSelectedRevision] = useState<number | null>(
-    live ? null : (fixtureHistory[0]?.revision ?? null),
-  );
-  const [historyError, setHistoryError] = useState<AppError | null>(null);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [statusError, setStatusError] = useState<AppError | null>(null);
-  const [refreshing, setRefreshing] = useState(live);
+
+  const page = useStore(store, selectPage);
+  const liveRepo = useStore(store, selectRepository);
+  const changes = useStore(store, selectChanges);
+  const checkedPaths = useStore(store, selectCheckedPaths);
+  const selectedPath = useStore(store, selectSelectedPath);
+  const commitMessage = useStore(store, selectCommitMessage);
+  const history = useStore(store, selectHistory);
+  const selectedRevision = useStore(store, selectSelectedRevision);
+  const historyError = useStore(store, selectHistoryError);
+  const historyLoading = useStore(store, selectHistoryLoading);
+  const statusError = useStore(store, selectStatusError);
+  const refreshing = useStore(store, selectRefreshing);
+  const mutating = useStore(store, selectMutating);
+  const mutationError = useStore(store, selectMutationError);
+  const operationLine = useStore(store, selectOperationLine);
+
   const [statusGeneration, setStatusGeneration] = useState(0);
   const [diffView, setDiffView] = useState<DiffView>({ state: 'idle' });
-  const [mutating, setMutating] = useState<MutationKind | null>(null);
-  const [mutationError, setMutationError] = useState<AppError | null>(null);
-  const [operationLine, setOperationLine] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ kind: ConfirmKind; targets: WorkingCopyChange[] } | null>(null);
 
   const generationRef = useRef(0);
@@ -110,12 +125,6 @@ export function RepositoryScreen({
   const historyAbortRef = useRef<AbortController | null>(null);
   const historyGenRef = useRef(0);
   const diffCacheRef = useRef(new Map<string, DiffResult>());
-  const checkedRef = useRef(checkedPaths);
-  const changesRef = useRef(changes);
-  const selectedRef = useRef(selectedPath);
-  checkedRef.current = checkedPaths;
-  changesRef.current = changes;
-  selectedRef.current = selectedPath;
 
   const rootPath = repository?.rootPath;
   const runRefresh = useCallback(
@@ -125,50 +134,37 @@ export function RepositoryScreen({
       const controller = new AbortController();
       abortRef.current = controller;
       const id = ++generationRef.current;
-      setRefreshing(true);
+      const snapshot = store.getState();
+      store.getState().setRefreshing(true);
       try {
         const result = await refreshWorkingCopy({
           rootPath,
           svn,
-          previousChecked: checkedRef.current,
-          previousPaths: new Set(changesRef.current.map((change) => change.path)),
-          previousSelected: selectedRef.current,
+          previousChecked: snapshot.checkedPaths,
+          previousPaths: new Set(snapshot.changes.map((change) => change.path)),
+          previousSelected: snapshot.selectedPath,
           forceChecked,
           signal: controller.signal,
         });
         if (id !== generationRef.current) return;
-        setLiveRepo(result.repository);
-        setChanges(result.changes);
-        setCheckedPaths(result.checkedPaths);
-        setSelectedPath(result.selectedPath);
-        setStatusError(null);
+        store.getState().applyRefreshResult(result);
         diffCacheRef.current.clear();
         setStatusGeneration((value) => value + 1);
       } catch (error) {
         if (id !== generationRef.current) return;
         if (error instanceof CommandError && error.message === 'aborted') return;
-        setStatusError(toAppError(error, 'Could not refresh status'));
+        store.getState().setStatusError(toAppError(error, 'Could not refresh status'));
       } finally {
-        if (id === generationRef.current) setRefreshing(false);
+        if (id === generationRef.current) store.getState().setRefreshing(false);
       }
     },
-    [rootPath, svn],
+    [rootPath, store, svn],
   );
 
   useEffect(() => {
     if (!live || !rootPath) return;
-    checkedRef.current = new Set();
-    changesRef.current = [];
-    selectedRef.current = null;
-    setLiveRepo(repository);
-    setChanges([]);
-    setCheckedPaths(new Set());
-    setSelectedPath(null);
-    setStatusError(null);
+    store.getState().resetWorkingCopy(repository);
     setDiffView({ state: 'idle' });
-    setHistory([]);
-    setSelectedRevision(null);
-    setHistoryError(null);
     diffCacheRef.current.clear();
     void runRefresh();
     return () => {
@@ -176,7 +172,7 @@ export function RepositoryScreen({
       diffAbortRef.current?.abort();
       historyAbortRef.current?.abort();
     };
-  }, [live, rootPath, repository, runRefresh]);
+  }, [live, rootPath, repository, runRefresh, store]);
 
   const runHistoryRefresh = useCallback(async () => {
     if (!rootPath || !svn?.getLog) return;
@@ -184,7 +180,7 @@ export function RepositoryScreen({
     const controller = new AbortController();
     historyAbortRef.current = controller;
     const id = ++historyGenRef.current;
-    setHistoryLoading(true);
+    store.getState().setHistoryLoading(true);
     try {
       const revisions = await loadRevisionHistory({
         rootPath,
@@ -192,20 +188,15 @@ export function RepositoryScreen({
         signal: controller.signal,
       });
       if (id !== historyGenRef.current) return;
-      setHistory(revisions);
-      setSelectedRevision((previous) => {
-        if (previous && revisions.some((item) => item.revision === previous)) return previous;
-        return revisions[0]?.revision ?? null;
-      });
-      setHistoryError(null);
+      store.getState().applyHistory(revisions);
     } catch (error) {
       if (id !== historyGenRef.current) return;
       if (error instanceof CommandError && error.message === 'aborted') return;
-      setHistoryError(toAppError(error, 'Could not load history'));
+      store.getState().setHistoryError(toAppError(error, 'Could not load history'));
     } finally {
-      if (id === historyGenRef.current) setHistoryLoading(false);
+      if (id === historyGenRef.current) store.getState().setHistoryLoading(false);
     }
-  }, [rootPath, svn]);
+  }, [rootPath, store, svn]);
 
   useEffect(() => {
     if (!live || page !== 'history') return;
@@ -288,29 +279,29 @@ export function RepositoryScreen({
 
   const runMutation = async (kind: MutationKind, work: () => Promise<void>, forceChecked?: ReadonlySet<string>) => {
     if (!live || !rootPath || !svn || !operations || busy) return;
-    setMutating(kind);
-    setMutationError(null);
+    store.getState().beginMutation(kind);
     try {
       await work();
       await runRefresh(forceChecked);
     } catch (error) {
-      setMutationError(toAppError(error, `${kind} failed`));
+      store.getState().setMutationError(toAppError(error, `${kind} failed`));
     } finally {
-      setMutating(null);
-      setOperationLine(null);
+      store.getState().endMutation();
     }
   };
 
   const runCommit = () => {
     if (!rootPath || !svn || !operations) return;
-    const message = commitMessage;
-    const paths = committablePaths;
-    if (!canCommit({ message, paths, mutating: busy })) return;
-    const previousMessage = commitMessage;
-    const previousChecked = new Set(checkedPaths);
+    const snapshot = store.getState();
+    const message = snapshot.commitMessage;
+    const paths = snapshot.changes
+      .filter((change) => snapshot.checkedPaths.has(change.path) && isCommittable(change))
+      .map((change) => change.path);
+    if (!canCommit({ message, paths, mutating: snapshot.mutating !== null })) return;
+    const previousMessage = snapshot.commitMessage;
+    const previousChecked = new Set(snapshot.checkedPaths);
     void (async () => {
-      setMutating('commit');
-      setMutationError(null);
+      store.getState().beginMutation('commit');
       try {
         await commitChanges({
           rootPath,
@@ -319,16 +310,15 @@ export function RepositoryScreen({
           svn: svn as CommitClient,
           operations,
         });
-        setCommitMessage('');
-        setCheckedPaths(new Set());
-        checkedRef.current = new Set();
+        store.getState().setCommitMessage('');
+        store.setState({ checkedPaths: new Set() });
         await runRefresh();
       } catch (error) {
-        setCommitMessage(previousMessage);
-        setCheckedPaths(previousChecked);
-        setMutationError(toAppError(error, 'Commit failed'));
+        store.getState().setCommitMessage(previousMessage);
+        store.setState({ checkedPaths: previousChecked });
+        store.getState().setMutationError(toAppError(error, 'Commit failed'));
       } finally {
-        setMutating(null);
+        store.getState().endMutation();
       }
     })();
   };
@@ -373,27 +363,6 @@ export function RepositoryScreen({
     });
   }, []);
 
-  const togglePath = (path: string) => {
-    setCheckedPaths((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
-    });
-  };
-
-  const toggleAll = (paths: string[]) => {
-    setCheckedPaths((prev) => {
-      const next = new Set(prev);
-      const allOn = paths.length > 0 && paths.every((path) => next.has(path));
-      for (const path of paths) {
-        if (allOn) next.delete(path);
-        else next.add(path);
-      }
-      return next;
-    });
-  };
-
   const confirmTitle =
     confirm?.kind === 'revert'
       ? confirm.targets.length === 1
@@ -430,7 +399,7 @@ export function RepositoryScreen({
         svnVersion={svnVersion}
         mutating={busy}
         updating={mutating === 'update'}
-        onNavigate={setPage}
+        onNavigate={store.getState().setPage}
         onUpdate={() => {
           if (!rootPath || !svn || !operations) return;
           void runMutation('update', async () => {
@@ -441,7 +410,7 @@ export function RepositoryScreen({
               operations,
               onStdout: (chunk) => {
                 output += chunk;
-                setOperationLine(lastOutputLine(output));
+                store.getState().setOperationLine(lastOutputLine(output));
               },
             });
           });
@@ -487,7 +456,7 @@ export function RepositoryScreen({
           error={historyError}
           refreshing={historyLoading}
           repositoryUrl={liveRepo?.repositoryUrl}
-          onSelect={setSelectedRevision}
+          onSelect={store.getState().selectRevision}
           onRefresh={() => void runHistoryRefresh()}
         />
       ) : page === 'working-copy' ? (
@@ -508,10 +477,10 @@ export function RepositoryScreen({
             refreshing={refreshing}
             mutating={busy}
             committing={mutating === 'commit'}
-            onSelect={setSelectedPath}
-            onToggle={togglePath}
-            onToggleAll={toggleAll}
-            onCommitMessage={setCommitMessage}
+            onSelect={store.getState().selectPath}
+            onToggle={store.getState().togglePath}
+            onToggleAll={store.getState().toggleAll}
+            onCommitMessage={store.getState().setCommitMessage}
             onCommit={runCommit}
             onRefresh={() => void runRefresh()}
           />
@@ -572,5 +541,3 @@ function fixtureDiffView(change: WorkingCopyChange | null): DiffView {
   }
   return { state: 'ready', path: change.path, result: { kind: 'text', patch: fixturePatch } };
 }
-
-
