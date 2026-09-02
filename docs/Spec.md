@@ -1,210 +1,398 @@
-# SVN GUI — Technical Specification
+# Revision — Technical Specification
 
-**Version:** 0.1
-**Target Platform:** macOS ARM64
-**Primary UI:** GPUIX
-**Language:** TypeScript
-**Runtime:** Bun
-**SVN Interface:** `svn` command-line client
-
----
-
-# 1. 技术目标
-
-本项目不是实现 SVN client library。
-
-核心架构：
-
-```text
-GPUIX
-  ↓
-React
-  ↓
-Application Services
-  ↓
-SvnClient
-  ↓
-Bun.spawn()
-  ↓
-System svn CLI
-```
-
-SVN CLI 是唯一 SVN backend。
+**Version:** 0.2  
+**Status:** Implementation-aligned  
+**Last updated:** 2026-09-02  
+**Platform:** macOS ARM64  
+**Frontend:** React on GPUIX  
+**Runtime:** Bun  
+**Language:** TypeScript  
+**SVN integration:** System CLI
 
 ---
 
-# 2. 技术栈
+# 1. Purpose
 
-## Runtime
+本文档描述 Revision 当前初版的实际技术实现，并作为后续 Codex / agent 修改代码时的基准。
+
+优先级：
 
 ```text
-Bun
+Current code
+> this Spec
+> PRD
+> historical implementation notes
 ```
 
-原因：
-
-- 原生 TypeScript
-- subprocess API
-- 文件系统 API
-- 开发体验简单
-- GPUIX 推荐 Bun hot workflow
+若本文档与旧 ArchitectureDesign.md 或 tasks.md 中的历史描述冲突，以当前代码和本文档为准。
 
 ---
 
-## UI
+# 2. Runtime & Dependencies
 
-```text
-@gpuix/react
-@gpuix/native
-react
+`package.json` 当前锁定：
+
+- `@gpuix/react@0.7.0`
+- `@gpuix/native@0.7.0`
+- React 19
+- TypeScript 5.8.3
+- Bun
+- `fast-xml-parser`
+
+Scripts：
+
+```bash
+bun run dev
+bun run dev:welcome
+bun run dev:changes
+bun run dev:history
+bun run typecheck
+bun test
+bun run build
 ```
 
-使用 GPUIX：
+Build：
 
-```text
-<div>
-<text>
-<input>
-<textarea>
-<virtual-list>
-<diff>
-<anchored>
+```bash
+bun build --compile src/main.tsx --outfile dist/revision
 ```
 
 ---
 
-## XML Parser
-
-建议：
-
-```text
-fast-xml-parser
-```
-
-用于解析：
-
-```text
-svn status --xml
-svn info --xml
-svn log --xml
-```
-
-不要自行使用 regex 解析 XML。
-
----
-
-# 3. 推荐目录结构
+# 3. Current Source Layout
 
 ```text
 src/
-├── app/
-│   ├── App.tsx
-│   ├── router.ts
-│   └── shortcuts.ts
-│
-├── components/
-│   ├── Button.tsx
-│   ├── Checkbox.tsx
-│   ├── Dialog.tsx
-│   ├── EmptyState.tsx
-│   ├── Spinner.tsx
-│   └── ErrorBanner.tsx
-│
-├── features/
-│   ├── welcome/
-│   │   ├── WelcomeScreen.tsx
-│   │   ├── CheckoutDialog.tsx
-│   │   └── RecentWorkingCopies.tsx
-│   │
-│   ├── changes/
-│   │   ├── ChangesPanel.tsx
-│   │   ├── ChangeRow.tsx
-│   │   ├── DiffPanel.tsx
-│   │   └── ChangeActions.tsx
-│   │
-│   ├── commit/
-│   │   └── CommitPanel.tsx
-│   │
-│   ├── history/
-│   │   ├── HistoryView.tsx
-│   │   ├── HistoryList.tsx
-│   │   └── RevisionDetails.tsx
-│   │
-│   └── repository/
-│       ├── RepositoryScreen.tsx
-│       └── RepositoryToolbar.tsx
-│
-├── domain/
-│   ├── repository.ts
-│   ├── change.ts
-│   ├── revision.ts
-│   └── operation.ts
-│
-├── services/
-│   ├── svn/
-│   │   ├── SvnClient.ts
-│   │   ├── commandRunner.ts
-│   │   ├── status.ts
-│   │   ├── info.ts
-│   │   ├── diff.ts
-│   │   ├── checkout.ts
-│   │   ├── commit.ts
-│   │   ├── update.ts
-│   │   ├── revert.ts
-│   │   ├── add.ts
-│   │   ├── delete.ts
-│   │   ├── log.ts
-│   │   └── parsers/
-│   │       ├── statusParser.ts
-│   │       ├── infoParser.ts
-│   │       └── logParser.ts
-│   │
-│   ├── picker/
-│   │   ├── DirectoryPicker.ts
-│   │   └── macosDirectoryPicker.ts
-│   │
-│   └── settings/
-│       └── settingsRepository.ts
-│
-├── state/
-│   ├── appStore.ts
-│   └── selectors.ts
-│
-└── main.tsx
+  app/
+    App.tsx
+    Titlebar.tsx
+    services.ts
+    shortcuts.ts
+    theme.ts
 
-tests/
-├── fixtures/
-│   ├── status.xml
-│   ├── info.xml
-│   └── log.xml
-│
-├── unit/
-├── integration/
-└── ui/
+  application/
+    checkoutRepository.ts
+    commitChanges.ts
+    errors.ts
+    loadDiff.ts
+    loadHistory.ts
+    mutateWorkingCopy.ts
+    openRepository.ts
+    operationManager.ts
+    refreshRepository.ts
+
+  components/
+    Button.tsx
+    Checkbox.tsx
+    Dialog.tsx
+    ErrorBanner.tsx
+    StatusBadge.tsx
+
+  design/
+    fixtures.ts
+
+  domain/
+    change.ts
+    diff.ts
+    error.ts
+    operation.ts
+    repository.ts
+    revision.ts
+
+  features/
+    changes/
+      ChangeRow.tsx
+      ChangesPanel.tsx
+      DiffPanel.tsx
+    history/
+      HistoryView.tsx
+    repository/
+      RepositoryScreen.tsx
+      Sidebar.tsx
+    welcome/
+      CheckoutDialog.tsx
+      WelcomeScreen.tsx
+      recentItems.ts
+
+  services/
+    picker/
+    settings/
+    svn/
+
+  main.tsx
 ```
+
+当前没有 Zustand、router 或 Rust backend。
+
+App / feature local state 使用 React state；业务流程集中在 application 层；SVN 细节集中在 services/svn。
 
 ---
 
-# 4. Domain Model
+# 4. Architectural Responsibilities
 
-## Repository
+## 4.1 app
+
+负责：
+
+- 应用启动；
+- 顶层 Welcome / Repository 状态；
+- service wiring；
+- titlebar；
+- 全局快捷键；
+- theme。
+
+## 4.2 application
+
+负责 use case orchestration：
+
+- open repository；
+- checkout；
+- refresh；
+- diff request；
+- commit；
+- update/add/delete/revert；
+- history load；
+- mutation serialization。
+
+这里允许组合多个 domain/service，但不直接写 UI。
+
+## 4.3 domain
+
+纯模型与规则：
+
+- SVN change status；
+- default selection；
+- committable/addable/revertable/deletable；
+- repository model；
+- revision model；
+- error model；
+- operation result。
+
+尽量保持无 UI / 无 process dependency，便于单元测试。
+
+## 4.4 services
+
+外部系统适配：
+
+- system SVN CLI；
+- XML parser；
+- macOS directory picker；
+- settings.json。
+
+## 4.5 features
+
+页面和交互组件：
+
+- Welcome；
+- Repository shell；
+- Changes；
+- Diff；
+- History。
+
+---
+
+# 5. App Navigation Model
+
+顶层不使用路由库。
+
+概念模型：
 
 ```ts
-export interface Repository {
-  rootPath: string;
-  repositoryUrl: string;
-  repositoryRoot: string;
-  uuid?: string;
-  revision: number;
+type AppView =
+  | { kind: 'welcome' }
+  | { kind: 'repository'; repository: Repository }
+```
+
+Repository 内：
+
+```ts
+type RepositoryPage =
+  | 'changes'
+  | 'history'
+  | 'working-copy'
+```
+
+History 不应重新做成独立 window / top-level route。
+
+`working-copy` 当前只允许保留占位；若新增真实功能，应作为独立需求实现。
+
+---
+
+# 6. SVN Client Contract
+
+当前 `CliSvnClient` 提供：
+
+```ts
+getVersion(signal?): Promise<string>
+
+validateWorkingCopy(path, signal?): Promise<Repository>
+
+getStatus(path, signal?): Promise<WorkingCopyChange[]>
+
+getDiff(rootPath, path, signal?): Promise<DiffResult>
+
+commit(rootPath, paths, message, signal?): Promise<CommitResult>
+
+add(rootPath, paths, signal?): Promise<void>
+
+delete(rootPath, paths, options?): Promise<void>
+
+revert(rootPath, paths, signal?): Promise<void>
+
+update(rootPath, options?): Promise<UpdateResult>
+
+checkout({ url, destination, signal?, onStdout? }): Promise<Repository>
+
+getLog(rootPath, options?): Promise<SvnRevision[]>
+```
+
+UI 不应自行拼 SVN argv。
+
+---
+
+# 7. CommandRunner
+
+所有 CLI 调用必须通过 `CommandRunner`。
+
+要求：
+
+- argv array，不拼 shell command string；
+- cwd 显式传入；
+- 支持 AbortSignal；
+- abort 时终止子进程；
+- 捕获 stdout / stderr / exitCode；
+- network/write 长操作可通过 `onStdout` 流式更新 UI；
+- 路径参数前使用 `--`，避免以 `-` 开头的路径被误识别为参数。
+
+新增 SVN 命令必须延续该模式。
+
+---
+
+# 8. SVN Commands
+
+## 8.1 Version
+
+```bash
+svn --version --quiet
+```
+
+## 8.2 Info
+
+```bash
+svn info --xml
+```
+
+解析为：
+
+```ts
+interface Repository {
+  rootPath: string
+  repositoryUrl: string
+  repositoryRoot: string
+  uuid?: string
+  revision: number
 }
 ```
 
----
+## 8.3 Status
 
-## WorkingCopyChange
+```bash
+svn status --xml --ignore-externals
+```
+
+输出通过 XML parser 转为 `WorkingCopyChange[]`。
+
+## 8.4 Diff
+
+```bash
+svn diff --git -- PATH
+```
+
+返回：
 
 ```ts
-export type SvnChangeStatus =
+type DiffResult =
+  | { kind: 'text'; patch: string }
+  | { kind: 'binary' }
+  | { kind: 'unversioned' }
+```
+
+unversioned 在 application 层可直接短路，无需实际执行 diff。
+
+## 8.5 Commit
+
+```bash
+svn commit --non-interactive -m MESSAGE -- PATHS...
+```
+
+解析：
+
+```text
+Committed revision N.
+```
+
+## 8.6 Add
+
+```bash
+svn add --parents -- PATHS...
+```
+
+## 8.7 Delete
+
+普通：
+
+```bash
+svn delete -- PATHS...
+```
+
+Missing：
+
+```bash
+svn delete --force -- PATHS...
+```
+
+## 8.8 Revert
+
+```bash
+svn revert -- PATHS...
+```
+
+MVP 不对 directory 做 recursive revert。
+
+## 8.9 Update
+
+```bash
+svn update --non-interactive
+```
+
+支持 stdout streaming。
+
+## 8.10 Checkout
+
+```bash
+svn checkout URL DEST --non-interactive
+```
+
+支持 stdout streaming。
+
+## 8.11 Log
+
+默认：
+
+```bash
+svn log --xml -v -l 100 -r HEAD:1 -- .
+```
+
+目标为当前 working copy URL，而不是 repository root。
+
+---
+
+# 9. Change Domain Rules
+
+支持：
+
+```ts
+type SvnChangeStatus =
   | 'modified'
   | 'added'
   | 'deleted'
@@ -215,1690 +403,557 @@ export type SvnChangeStatus =
   | 'ignored'
   | 'external'
   | 'obstructed'
-  | 'incomplete';
-
-export interface WorkingCopyChange {
-  path: string;
-  absolutePath: string;
-
-  nodeKind?: 'file' | 'dir';
-
-  status: SvnChangeStatus;
-
-  propertyStatus?: string;
-
-  revision?: number;
-
-  checked: boolean;
-}
+  | 'incomplete'
 ```
 
-注意：
-
-`checked` 实际属于 UI/application state。
-
-如果希望 domain 更纯：
-
-```ts
-checkedPaths: Set<string>;
-```
-
-应单独保存在 Store。
-
-推荐使用后一种方案。
-
----
-
-# 5. Revision Model
-
-```ts
-export interface SvnRevision {
-  revision: number;
-  author?: string;
-  date?: string;
-  message: string;
-  changedPaths: RevisionChangedPath[];
-}
-
-export interface RevisionChangedPath {
-  path: string;
-  action: 'A' | 'M' | 'D' | 'R';
-  copyFromPath?: string;
-  copyFromRevision?: number;
-}
-```
-
----
-
-# 6. Operation Model
-
-```ts
-export type OperationKind =
-  | 'checkout'
-  | 'status'
-  | 'diff'
-  | 'commit'
-  | 'update'
-  | 'revert'
-  | 'add'
-  | 'delete'
-  | 'log';
-
-export interface RunningOperation {
-  id: string;
-  kind: OperationKind;
-
-  startedAt: number;
-
-  blocking: boolean;
-  cancelable: boolean;
-
-  message?: string;
-}
-```
-
----
-
-# 7. SvnClient Interface
-
-所有 UI 必须通过统一 Client 操作 SVN。
-
-```ts
-export interface SvnClient {
-  getVersion(): Promise<string>;
-
-  validateWorkingCopy(path: string): Promise<Repository>;
-
-  checkout(input: { url: string; destination: string }): Promise<Repository>;
-
-  status(repository: Repository): Promise<WorkingCopyChange[]>;
-
-  diff(
-    repository: Repository,
-    path: string,
-    signal?: AbortSignal,
-  ): Promise<string>;
-
-  update(repository: Repository): Promise<UpdateResult>;
-
-  commit(
-    repository: Repository,
-    paths: string[],
-    message: string,
-  ): Promise<CommitResult>;
-
-  revert(repository: Repository, paths: string[]): Promise<void>;
-
-  add(repository: Repository, paths: string[]): Promise<void>;
-
-  delete(repository: Repository, paths: string[]): Promise<void>;
-
-  log(
-    repository: Repository,
-    options?: {
-      limit?: number;
-    },
-  ): Promise<SvnRevision[]>;
-}
-```
-
----
-
-# 8. Command Runner
-
-禁止业务代码直接调用：
-
-```ts
-Bun.spawn();
-```
-
-统一：
-
-```ts
-interface CommandRequest {
-  args: string[];
-  cwd?: string;
-  signal?: AbortSignal;
-}
-
-interface CommandResult {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-}
-```
-
-实现：
+状态字母：
 
 ```text
-services/svn/commandRunner.ts
+M A D ? ! R C I X O ~
 ```
+
+隐藏：
+
+- ignored
+- external
+
+默认 checked：
+
+- modified
+- added
+- deleted
+- replaced
+
+可 commit：
+
+- modified
+- added
+- deleted
+- replaced
+
+可 add：
+
+- unversioned
+
+可 revert：
+
+- modified
+- added
+- deleted
+- replaced
+- missing
+- conflicted
+
+但 `nodeKind === 'dir'` 禁止 revert。
+
+可 delete：
+
+- modified
+- added
+- deleted
+- replaced
+- missing
+- conflicted
+
+Missing delete 必须 force。
 
 ---
 
-# 9. 安全执行规则
+# 10. Refresh Semantics
 
-禁止：
-
-```ts
-Bun.spawn(['sh', '-c', `svn diff ${path}`]);
-```
-
-禁止字符串 shell interpolation。
-
-必须：
-
-```ts
-Bun.spawn(['svn', 'diff', '--', path]);
-```
-
-即：
+Repository refresh 同时执行：
 
 ```text
-shell = false
-argv array
-```
-
-这样可以正确处理：
-
-- 空格
-- 中文路径
-- 引号
-- 特殊字符
-
-并避免 command injection。
-
----
-
-# 10. SVN Availability
-
-应用启动时执行：
-
-```bash
-svn --version --quiet
-```
-
-失败：
-
-Welcome Screen 显示：
-
-```text
-SVN CLI was not found.
-
-Install Subversion and restart the application.
-```
-
-禁止整个应用退出。
-
----
-
-# 11. Working Copy Validation
-
-执行：
-
-```bash
-svn info --xml .
-```
-
-`cwd`：
-
-```text
-selected directory
-```
-
-成功则解析：
-
-```xml
-<entry
-  kind="dir"
-  path="."
-  revision="123">
-
-  <url>...</url>
-
-  <repository>
-    <root>...</root>
-    <uuid>...</uuid>
-  </repository>
-</entry>
-```
-
-获得：
-
-```ts
-Repository;
-```
-
----
-
-# 12. Open Working Copy
-
-流程：
-
-```text
-Browse
- ↓
-DirectoryPicker.pick()
- ↓
 svn info --xml
- ↓
-valid?
- ├ yes → open repository
- └ no  → error
-```
-
----
-
-# 13. Directory Picker
-
-GPUIX MVP 不要求把 picker 与 SVN service 耦合。
-
-定义：
-
-```ts
-export interface DirectoryPicker {
-  pickDirectory(options?: { title?: string }): Promise<string | null>;
-}
-```
-
-macOS MVP 可以使用：
-
-```text
-osascript
-```
-
-调用系统 folder picker。
-
-例如逻辑：
-
-```text
-osascript
--e
-POSIX path of (choose folder with prompt "Open SVN Working Copy")
-```
-
-用户 Cancel：
-
-```ts
-return null;
-```
-
-未来可以替换为：
-
-```text
-native GPUI/N-API picker
-```
-
-而不改变 UI。
-
----
-
-# 14. Checkout
-
-命令：
-
-```bash
-svn checkout URL DESTINATION --non-interactive
-```
-
-必须通过 argv：
-
-```ts
-['svn', 'checkout', url, destination, '--non-interactive'];
-```
-
-成功后：
-
-```text
-validateWorkingCopy(destination)
-```
-
-并自动打开。
-
----
-
-# 15. Authentication 策略
-
-MVP 所有远程 SVN 操作使用：
-
-```text
---non-interactive
-```
-
-原因：
-
-GUI 内没有 stdin authentication prompt。
-
-允许 SVN 使用：
-
-```text
-~/.subversion/auth
-```
-
-中的 credential cache。
-
-如果认证失败：
-
-UI 展示：
-
-```text
-Authentication required.
-
-Authenticate using svn in Terminal first and retry.
-```
-
-绝对禁止：
-
-```text
---username
---password
-```
-
-写入 settings。
-
----
-
-# 16. Status
-
-命令：
-
-```bash
 svn status --xml --ignore-externals
 ```
 
-cwd：
+并行读取。
 
-```text
-repository.rootPath
-```
+结果处理：
 
-解析：
+1. hidden statuses 过滤；
+2. changes 排序；
+3. reconcile checkbox；
+4. reconcile selected file；
+5. 更新 repository revision。
 
-```xml
-<target path=".">
-  <entry path="src/App.ts">
-    <wc-status
-      item="modified"
-      props="none"
-      revision="120"/>
-  </entry>
-</target>
-```
+Selection reconcile 规则：
 
-转换为：
+- 已存在文件保留用户之前 checked/unchecked 状态；
+- 新出现的 M/A/D/R 按默认规则 checked；
+- mutation 可通过 `forceChecked` 强制目标项在刷新后 checked，例如 Add。
+
+所有成功 mutation 都必须走同一 refresh 流程。
+
+---
+
+# 11. Diff Request Semantics
+
+Diff 需要防止快速切换文件时 race condition。
+
+实现要求：
+
+- 每次请求有递增 request id 或等价 generation；
+- 新请求 abort 旧请求；
+- completion 时校验 request id；
+- aborted request 不显示 error；
+- Refresh / mutation 后 cache invalidation；
+- `<diff>` 所在 Detail pane 是 diff 的主要滚动容器。
+
+不得让旧文件 diff 覆盖当前 selection。
+
+---
+
+# 12. Commit State Machine
+
+可提交：
 
 ```ts
-WorkingCopyChange;
+canCommit =
+  message.trim().length > 0 &&
+  committablePaths.length > 0 &&
+  !mutating
 ```
 
----
-
-# 17. 默认状态过滤
-
-不要展示：
-
-```text
-normal
-ignored
-external
-```
-
-展示：
-
-```text
-modified
-added
-deleted
-unversioned
-missing
-replaced
-conflicted
-obstructed
-incomplete
-```
-
----
-
-# 18. Status Default Selection
-
-自动 checked：
-
-```text
-modified
-added
-deleted
-replaced
-```
-
-默认 unchecked：
-
-```text
-unversioned
-missing
-conflicted
-obstructed
-incomplete
-```
-
-Refresh 时：
-
-尽量保留已有用户 selection。
-
-算法：
-
-```text
-oldSelectedPaths ∩ currentCommittablePaths
-```
-
-新出现的 modified 文件可默认 checked。
-
----
-
-# 19. Diff
-
-命令：
-
-```bash
-svn diff --git -- PATH
-```
-
-`cwd`：
-
-```text
-repository.rootPath
-```
-
-输出直接传：
-
-```tsx
-<diff patch={patch} />
-```
-
-不要自行解析成每一行 React node。
-
----
-
-# 20. Diff Cache
-
-Store：
-
-```ts
-Map<
-  string,
-  {
-    patch: string;
-    loadedAt: number;
-  }
->;
-```
-
-当：
-
-```text
-Refresh
-Update
-Add
-Delete
-Revert
-Commit
-```
-
-发生后：
-
-```text
-clear diff cache
-```
-
----
-
-# 21. Diff Cancellation
-
-用户快速切换：
-
-```text
-A.ts
-B.ts
-C.ts
-```
-
-不能等三个 diff 全部完成。
-
-需要：
-
-```text
-AbortController
-```
-
-选择新文件时：
-
-```text
-abort previous diff
-start new diff
-```
-
-如果 Bun subprocess 不直接支持 AbortSignal：
-
-封装：
-
-```text
-signal.abort()
-→ process.kill()
-```
-
----
-
-# 22. Binary Diff
-
-如果 stdout 为空并且 SVN 输出提示 binary：
-
-返回：
-
-```ts
-{
-  kind: 'binary';
-}
-```
-
-推荐升级 Diff API：
-
-```ts
-type DiffResult =
-  | {
-      kind: 'text';
-      patch: string;
-    }
-  | {
-      kind: 'binary';
-    }
-  | {
-      kind: 'unversioned';
-    };
-```
-
----
-
-# 23. Add
-
-命令：
-
-```bash
-svn add --parents -- PATH...
-```
-
-只允许：
-
-```text
-unversioned
-```
-
-状态。
-
-成功后：
-
-```text
-refreshStatus()
-```
-
----
-
-# 24. Delete
-
-已有文件：
-
-```bash
-svn delete -- PATH...
-```
-
-必须先由 UI confirm。
-
-Missing 文件：
-
-```bash
-svn delete --force -- PATH...
-```
-
-使其 schedule deletion。
-
-不要默认使用：
-
-```text
---force
-```
-
-删除仍存在的普通文件。
-
----
-
-# 25. Revert
-
-对文件：
-
-```bash
-svn revert -- PATH...
-```
-
-MVP 不支持：
-
-```text
-recursive directory revert
-```
-
-如果 status item 为目录，并且内部包含修改：
-
-UI 不提供一键 recursive revert。
-
-原因：
-
-危险性过高。
-
----
-
-# 26. Commit
-
-前置校验：
-
-```text
-message.trim().length > 0
-
-selectedPaths.length > 0
-
-no blocking operation
-```
-
-执行：
-
-```bash
-svn commit PATH1 PATH2 ... -m MESSAGE --non-interactive
-```
-
-通过 argv。
-
-绝对不要：
-
-```text
-拼 shell command
-```
-
----
-
-# 27. Commit Result
-
-stdout 示例解析：
-
-```text
-Committed revision 123.
-```
-
-使用 regex 只解析 revision number 是允许的：
-
-```ts
-/Committed revision (\d+)\./;
-```
-
-因为这里不是结构化 XML 数据。
-
-返回：
-
-```ts
-interface CommitResult {
-  revision?: number;
-  output: string;
-}
-```
-
----
-
-# 28. Commit 后行为
+开始 commit：
+
+- mutation = `commit`；
+- 保留 message / checkedPaths 副本；
+- disable write operations。
 
 成功：
 
-```text
-commit message = ''
-selectedPaths = empty
-diff cache = clear
-
-refresh info
-refresh status
-```
+- message = '';
+- checkedPaths = empty;
+- refresh。
 
 失败：
 
-保留：
+- 恢复 message；
+- 恢复 checkedPaths；
+- 设置 mutation error。
 
-```text
-commit message
-selection
-```
-
----
-
-# 29. Update
-
-命令：
-
-```bash
-svn update --non-interactive
-```
-
-cwd：
-
-```text
-repository.rootPath
-```
-
-允许将 stdout 逐行发送给 UI：
-
-```text
-Updating...
-U src/App.ts
-G src/api.ts
-Updated to revision 130.
-```
-
-MVP UI 不必设计复杂 progress bar。
-
-可使用：
-
-```text
-spinner + current output line
-```
+快捷键 `⌘Enter` 必须调用同一 commit path，不得复制业务逻辑。
 
 ---
 
-# 30. Update 后
+# 13. Mutation Serialization
 
-执行：
+`OperationManager` 是所有 write mutation 的唯一并发门禁。
 
-```text
-clear diff cache
-refresh repository info
-refresh status
-```
+同一时间只允许一个 mutation。
 
----
+范围：
 
-# 31. History
+- commit
+- update
+- add
+- delete
+- revert
+- checkout
 
-命令：
+UI 也通过 `mutating !== null` 同步 disable 相应按钮。
 
-```bash
-svn log --xml -v -l 100 .
-```
-
-cwd：
-
-```text
-repository.rootPath
-```
-
-解析：
-
-```xml
-<logentry revision="123">
-
-<author>alice</author>
-
-<date>
-2026-09-01T...
-</date>
-
-<msg>
-Fix user service
-</msg>
-
-<paths>
-...
-</paths>
-
-</logentry>
-```
+任何新增 write 操作都必须接入 OperationManager，不能绕过。
 
 ---
 
-# 32. History Pagination
+# 14. RepositoryScreen State
 
-MVP：
+当前 RepositoryScreen 管理的主要状态包括：
+
+- page
+- live repository metadata
+- changes
+- checkedPaths
+- selectedPath
+- status generation / refresh state
+- diff view / request state
+- commitMessage
+- mutation kind / error / output line
+- confirmation dialog
+- history
+- selectedRevision
+- history loading/error
+
+当前实现刻意不引入全局状态库。
+
+除非出现跨页面复杂共享或明显维护成本，不要为了“架构整洁”提前引入 Zustand/Redux。
+
+---
+
+# 15. Changes UI Contract
+
+ChangesPane：
+
+- 固定 list/detail 桌面布局；
+- Changed Files 使用 `<virtual-list>`；
+- path filter；
+- Select all 只针对当前 filter 后可见 items；
+- row click = select for diff；
+- checkbox = commit selection；
+- 两个行为必须分离。
+
+Commit composer 位于 ChangesPane 底部。
+
+Changes 页不得恢复成全窗口 bottom commit bar。
+
+---
+
+# 16. Diff UI Contract
+
+DiffPanel 根据 `DiffView` 显示：
+
+- idle；
+- loading；
+- error；
+- text；
+- binary；
+- unversioned。
+
+当前文件允许时提供：
+
+- Add；
+- Revert；
+- Delete。
+
+Revert / Delete 必须经过统一 confirmation flow。
+
+---
+
+# 17. Sidebar Contract
+
+Sidebar 包含：
+
+- workspace switcher；
+- Changes；
+- History；
+- Working Copy；
+- SVN revision / local change status；
+- Update；
+- Add unversioned files；
+- Revert selected；
+- Delete selected；
+- SVN CLI version。
+
+Workspace switcher 只切换 Recent working copies。
+
+`Open Working Copy` / `Welcome Screen` 当前位于 Titlebar。
+
+Sync label 当前语义是：
 
 ```text
-100 revisions only
+0 local changes → Up to date
+N local changes → N local changes
 ```
 
-API 提前设计：
+这不是 server freshness 检查，不允许把它描述为远端“已同步”。
+
+---
+
+# 18. History
+
+默认 limit：
 
 ```ts
-log({
-  limit: 100,
-  startRevision?: number
-})
+DEFAULT_LOG_LIMIT = 100
 ```
 
-但 UI 暂不实现 pagination。
+History 首次进入或 refresh 时加载真实 log。
 
----
-
-# 33. Store
-
-推荐单一应用 Store。
-
-MVP 可以使用：
-
-```text
-Zustand
-```
-
-或者自行实现 React context。
-
-如果引入 Zustand：
+Revision model：
 
 ```ts
-interface AppState {
-  repository: Repository | null;
-
-  changes: WorkingCopyChange[];
-  checkedPaths: Set<string>;
-
-  selectedPath: string | null;
-
-  diff:
-    | { state: 'idle' }
-    | { state: 'loading'; path: string }
-    | { state: 'ready'; path: string; result: DiffResult }
-    | { state: 'error'; path: string; error: AppError };
-
-  commitMessage: string;
-
-  history: SvnRevision[];
-
-  operation: RunningOperation | null;
-
-  error: AppError | null;
-
-  recentWorkingCopies: RecentWorkingCopy[];
+interface SvnRevision {
+  revision: number
+  author?: string
+  date?: string
+  message: string
+  changedPaths: ...
 }
 ```
 
----
+History filter 为客户端内存过滤。
 
-# 34. Repository Open Use Case
+当前支持搜索：
 
-```text
-openRepository(path)
+- commit message；
+- author；
+- revision。
 
-1 validate path
-2 svn info
-3 set repository
-4 add recent
-5 status
-6 choose first changed file
-7 load diff
-```
+当前不实现：
 
----
+- My commits；
+- branch chip；
+- revision diff；
+- pagination。
 
-# 35. Refresh Use Case
-
-```text
-refreshRepository()
-
-Promise.all:
-  svn info
-  svn status
-
-then:
-  reconcile selections
-  clear invalid selected path
-```
-
-status 和 info 可以并行。
+不得把设计稿中的未实现 chips 当成现有功能。
 
 ---
 
-# 36. Mutation Use Case
+# 19. Recent & Settings
 
-所有 mutation：
-
-```text
-runMutation(kind, callback)
-```
-
-统一：
+配置路径：
 
 ```text
-set blocking operation
-clear error
-
-try
-    execute
-    refresh
-catch
-    set error
-finally
-    clear operation
+~/Library/Application Support/Revision/settings.json
 ```
 
----
-
-# 37. Operation Lock
-
-维护：
-
-```ts
-let mutationRunning = false;
-```
-
-或者 Store operation。
-
-如果已有 blocking operation：
-
-```text
-commit/update/revert/add/delete
-```
-
-按钮 disabled。
-
----
-
-# 38. Error Model
-
-```ts
-export interface AppError {
-  kind:
-    | 'svn-not-found'
-    | 'not-working-copy'
-    | 'authentication'
-    | 'network'
-    | 'working-copy-locked'
-    | 'conflict'
-    | 'command-failed'
-    | 'unknown';
-
-  title: string;
-  message: string;
-
-  command?: string[];
-  stderr?: string;
-  exitCode?: number;
-}
-```
-
----
-
-# 39. Error Classification
-
-根据 stderr 识别常见情况：
-
-```text
-E155007 → not working copy
-authentication failed → authentication
-E155004 → working copy locked
-E170013 / network → network
-conflict → conflict
-```
-
-不要依赖分类才能显示错误。
-
-无法识别：
-
-```text
-command-failed
-```
-
----
-
-# 40. 文件路径规则
-
-UI 永远展示：
-
-```text
-relative path
-```
-
-Command cwd：
-
-```text
-working copy root
-```
-
-Command target：
-
-```text
-relative path
-```
-
-避免将 absolute paths 暴露给 SVN command unless necessary。
-
----
-
-# 41. UI Component Tree
-
-```text
-<App>
-
-  <WelcomeScreen />
-
-or
-
-  <RepositoryScreen>
-
-      <RepositoryToolbar />
-
-      <MainSplit>
-
-          <ChangesPanel>
-              <virtual-list>
-                  <ChangeRow />
-              </virtual-list>
-          </ChangesPanel>
-
-          <DiffPanel>
-              <diff />
-          </DiffPanel>
-
-      </MainSplit>
-
-      <CommitPanel>
-          <textarea />
-          <CommitButton />
-      </CommitPanel>
-
-  </RepositoryScreen>
-
-  <DialogLayer />
-
-  <ErrorLayer />
-
-</App>
-```
-
----
-
-# 42. GPUIX Diff
-
-优先：
-
-```tsx
-<diff
-  patch={patch}
-  wordDiff
-  style={{
-    flexGrow: 1,
-    minHeight: 0,
-  }}
-/>
-```
-
-不要第一版自己实现 syntax diff renderer。
-
----
-
-# 43. GPUIX Virtual List
-
-Changed Files：
-
-```tsx
-<virtual-list
-  estimatedItemHeight={44}
-  style={{
-    flexGrow: 1,
-    minHeight: 0,
-  }}
->
-  {changes.map(...)}
-</virtual-list>
-```
-
----
-
-# 44. Scroll Architecture
-
-GPUIX 当前不适合 nested vertical scrolling。
-
-因此必须设计成：
-
-```text
-Changes list
-```
-
-和：
-
-```text
-Diff
-```
-
-是两个并列 pane。
-
-不要：
-
-```text
-整个页面 Scroll
-  └─ Diff Scroll
-```
-
-History 也作为独立 View。
-
----
-
-# 45. Dialog
-
-使用：
-
-```text
-<anchored>
-```
-
-- overlay。
-
-需要支持：
-
-```text
-click outside
-Esc
-```
-
-Destructive dialog：
-
-```text
-outside click = 不执行操作
-```
-
----
-
-# 46. UI Theme
-
-MVP 先做单个 Dark Theme。
-
-建议 tokens：
-
-```ts
-export const theme = {
-  bg: '#18181b',
-  panel: '#202024',
-  panelHover: '#29292e',
-
-  border: '#303036',
-
-  text: '#f4f4f5',
-  textMuted: '#a1a1aa',
-
-  accent: '#7c8cff',
-
-  danger: '#ef4444',
-  warning: '#f59e0b',
-  success: '#22c55e',
-};
-```
-
-具体颜色允许实现阶段调整。
-
-不要将颜色散落在 Component 中。
-
----
-
-# 47. Status Semantic Color
-
-建议：
-
-```text
-M  neutral/blue
-A  green
-D  red
-?  muted
-!  orange
-C  red
-R  purple
-```
-
-颜色不能成为唯一状态表达方式。
-
-必须保留状态字母。
-
----
-
-# 48. Settings Storage
-
-推荐：
-
-```text
-~/Library/Application Support/<app-name>/settings.json
-```
-
-结构：
+schema：
 
 ```ts
 interface Settings {
-  version: 1;
-
-  recentWorkingCopies: {
-    path: string;
-    lastOpenedAt: number;
-  }[];
-
-  lastWorkingCopy?: string;
-
+  version: 1
+  recentWorkingCopies: RecentWorkingCopy[]
+  lastWorkingCopy?: string
   window?: {
-    width: number;
-    height: number;
-  };
+    width: number
+    height: number
+  }
 }
 ```
 
-写文件使用 atomic replace：
+Recent：
 
-```text
-settings.tmp
-rename
+```ts
+MAX_RECENT_WORKING_COPIES = 10
 ```
+
+save 使用：
+
+1. 写 `.tmp`；
+2. rename 覆盖；
+
+保持 atomic write。
+
+无效 JSON 回退到 default settings。
 
 ---
 
-# 49. 自动 Refresh
+# 20. Directory Picker
 
-MVP 不实现 filesystem watcher。
+macOS 使用系统目录选择能力的 adapter。
 
-原因：
+约束：
 
-- 降低复杂度；
-- IDE 大量文件写入可能导致 status storm。
+- cancel 返回 `null`；
+- AppleEvent cancel / 本地化取消错误不得作为应用错误；
+- picker 与业务 open use case 分离。
 
-MVP：
-
-```text
-manual Refresh
-+
-mutation automatic refresh
-+
-app focus refresh optional
-```
-
-如果 GPUIX 后续有稳定 focus lifecycle：
-
-窗口重新获得 focus 后：
-
-```text
-debounce 300ms
-svn status
-```
-
-可作为增强。
+Windows picker 不属于 MVP。
 
 ---
 
-# 50. Integration Testing
+# 21. Error Model
 
-使用真正本地 SVN repository。
+```ts
+type AppErrorKind =
+  | 'svn-not-found'
+  | 'not-working-copy'
+  | 'authentication'
+  | 'network'
+  | 'working-copy-locked'
+  | 'conflict'
+  | 'command-failed'
+  | 'unknown'
+```
 
-测试建立：
+当前 classifier 已可靠处理：
+
+- aborted；
+- E155007 / not working copy；
+- E170001 / E215004 / authentication；
+
+其它大多回退 `command-failed`。
+
+因此 network / locked / conflict 虽已在 type 中定义，但暂时不能视为完整实现。
+
+Polish 阶段补齐 classifier 时，应以 SVN error code + message 双重匹配，并保留：
+
+- command；
+- stderr；
+- exitCode。
+
+---
+
+# 22. Authentication
+
+所有 network / write 命令保持 `--non-interactive`。
+
+Revision 不实现 credential UI，不保存用户名密码。
+
+认证失败文案：
+
+- 明确指出 authentication required；
+- 指引用户先在 Terminal 使用 svn 完成认证；
+- 然后 retry。
+
+不要在 MVP 中引入 Keychain / credential manager。
+
+---
+
+# 23. Shortcuts
+
+当前：
+
+```text
+⌘O       open-working-copy
+⌘⇧O      checkout
+⌘Enter   commit
+Esc      close-dialog
+```
+
+待实现：
+
+```text
+⌘R       refresh
+```
+
+快捷键通过 app-level listener 分发，具体 feature 复用已有 action handlers。
+
+不得在 textarea / component 中复制一套不同的 mutation 逻辑。
+
+---
+
+# 24. Scrolling & Virtualization
+
+GPUIX 下避免不必要的 nested vertical scroll。
+
+当前原则：
+
+- Changed Files：virtual-list 自己滚动；
+- Diff：Detail pane 自己滚动；
+- History list：virtual-list 自己滚动；
+- Revision detail：右侧独立滚动；
+- 外层 Repository shell 不承担内容滚动。
+
+新增布局需保持 `minHeight: 0` / `minWidth: 0` 等 flex 可收缩约束，避免 GPUIX overflow 问题。
+
+---
+
+# 25. Tests
+
+当前已有：
+
+```text
+tests/unit/
+tests/integration/
+tests/ui/
+tests/ui/screenshots/
+```
+
+覆盖包括：
+
+- SVN argv；
+- XML parsers；
+- change rules；
+- command runner；
+- settings/recent；
+- open repository；
+- refresh；
+- diff race handling；
+- commit；
+- mutations；
+- checkout；
+- history；
+- UI interactions。
+
+集成测试优先使用本地 `file://` SVN repository，避免依赖网络。
+
+修改 parser / argv / selection semantics / mutation semantics 时必须同步测试。
+
+---
+
+# 26. Preview Fixtures
+
+开发阶段保留：
 
 ```bash
-svnadmin create /tmp/test-repo
+bun run dev:welcome
+bun run dev:changes
+bun run dev:history
 ```
 
-然后：
+它们用于视觉开发，不得污染 live repository flow。
+
+生产行为必须由真实 SVN service 驱动。
+
+---
+
+# 27. Known Gaps
+
+当前明确未完成：
+
+1. Working Copy 详情页；
+2. Cmd+R；
+3. 完整 classifySvnError；
+4. Error Banner / Show Details polish；
+5. 最终 screenshot 验收；
+6. 至少一条 E2E happy path；
+7. unsigned `bun run build` 最终验收。
+
+这些属于当前 MVP 收尾优先级。
+
+---
+
+# 28. Change Rules for Future Agents
+
+后续实现必须遵守：
+
+1. 不自行新增 PRD 非目标功能；
+2. UI 不直接运行 SVN CLI；
+3. SVN argv 必须为数组；
+4. path 参数使用 `--`；
+5. write mutation 必须通过 OperationManager；
+6. mutation 成功必须 refresh；
+7. destructive action 必须确认；
+8. 不对目录 recursive revert；
+9. checkbox selection 与 row selection 独立；
+10. 不引入 Git staging 概念；
+11. 不引入 credential storage；
+12. 不为架构形式主义提前引入全局状态库；
+13. History 保持 Repository 内页面；
+14. Changes 保持 Sidebar + List + Detail；
+15. 先运行 `bun run typecheck` 与 `bun test` 再提交。
+
+---
+
+# 29. Acceptance Commands
+
+功能改动完成后至少执行：
 
 ```bash
-svn checkout file:///tmp/test-repo /tmp/wc
+bun run typecheck
+bun test
 ```
 
-自动测试：
+涉及 build / packaging 时额外执行：
 
-```text
-create file
-svn add
-commit
-modify
-status
-diff
-revert
-update
-log
-delete
+```bash
+bun run build
 ```
 
-这样比 mock `svn` 输出更可靠。
+涉及核心 UI 时，应更新或核对对应 screenshot / UI test。
 
 ---
 
-# 51. Parser Unit Tests
+# 30. Current MVP Completion Boundary
 
-fixture：
-
-```text
-tests/fixtures/status/
-tests/fixtures/info/
-tests/fixtures/log/
-```
-
-至少覆盖：
-
-Status：
+当前代码已经可以完成：
 
 ```text
-modified
-added
-deleted
-unversioned
-missing
-conflicted
-unicode path
-space path
+Launch
+→ Detect SVN
+→ Open / Checkout
+→ Status
+→ Filter / Select
+→ Diff
+→ Add / Revert / Delete
+→ Commit
+→ Update
+→ History
 ```
 
-Log：
-
-```text
-empty message
-unicode author
-multi-line message
-changed paths
-```
-
----
-
-# 52. UI Tests
-
-使用 GPUIX test renderer。
-
-测试：
-
-```text
-Welcome Screen renders
-Changes list renders
-Selecting row changes Diff
-Checking checkbox changes Commit count
-Empty commit message disables button
-Dialog opens
-Dialog cancel
-Error banner
-History screen
-```
-
-重要 View 加 screenshot regression。
-
----
-
-# 53. E2E 测试
-
-至少一个 happy-path：
-
-```text
-create local repo
-checkout
-modify file
-launch app state
-refresh
-select file
-diff visible
-commit
-status becomes clean
-history includes commit
-```
-
----
-
-# 54. Logging
-
-开发环境：
-
-```text
-command
-cwd
-exit code
-duration
-```
-
-禁止 log：
-
-```text
-password
-credentials
-environment secrets
-file contents
-```
-
-Production 默认不生成 verbose log 文件。
-
----
-
-# 55. Packaging
-
-MVP：
-
-```text
-macOS arm64
-```
-
-第一阶段接受：
-
-```text
-unsigned development build
-```
-
-发布前需要：
-
-```text
-.app bundle
-codesign
-notarization
-DMG/ZIP
-```
-
-不要在 MVP 初期因为 packaging 阻塞功能实现。
-
----
-
-# 56. GPUIX Version
-
-必须锁定精确版本。
-
-禁止：
-
-```json
-"@gpuix/react": "latest"
-```
-
-使用：
-
-```json
-"@gpuix/react": "x.y.z"
-"@gpuix/native": "x.y.z"
-```
-
-原因：
-
-GPUIX 仍快速演进。
-
-升级应独立 PR 完成。
-
----
-
-# 57. Codex Implementation Order
-
-Codex 必须严格按以下阶段实现。
-
-## Phase 1 — Bootstrap
-
-实现：
-
-```text
-GPUIX window
-theme
-Welcome screen
-SVN detection
-```
-
-Acceptance：
-
-```text
-bun run dev
-```
-
-能够启动窗口。
-
----
-
-## Phase 2 — Repository
-
-实现：
-
-```text
-DirectoryPicker
-svn info
-open working copy
-recent list
-Repository Screen
-```
-
----
-
-## Phase 3 — Status
-
-实现：
-
-```text
-status XML parser
-Changed Files
-Refresh
-```
-
----
-
-## Phase 4 — Diff
-
-实现：
-
-```text
-select file
-svn diff
-GPUIX <diff>
-loading
-cancellation
-```
-
----
-
-## Phase 5 — Commit
-
-实现：
-
-```text
-checkbox
-commit message
-commit selected files
-refresh after commit
-```
-
----
-
-## Phase 6 — Mutations
-
-实现：
-
-```text
-Update
-Add
-Delete
-Revert
-confirmation dialogs
-operation lock
-```
-
----
-
-## Phase 7 — Checkout
-
-实现：
-
-```text
-Checkout dialog
-destination picker
-svn checkout
-automatic open
-```
-
----
-
-## Phase 8 — History
-
-实现：
-
-```text
-log XML parser
-History List
-Revision Details
-```
-
----
-
-## Phase 9 — Polish
-
-实现：
-
-```text
-keyboard shortcuts
-empty states
-error classification
-screenshot tests
-integration tests
-packaging
-```
-
----
-
-# 58. 禁止 Codex 擅自增加的内容
-
-除非需求文档更新，否则不要实现：
-
-```text
-Git support
-SVN native Rust library
-database
-backend server
-Electron
-Tauri
-webview
-router library
-GraphQL
-REST API
-plugin framework
-conflict editor
-branch/tag UI
-custom updater
-telemetry
-authentication storage
-```
-
-保持 MVP scope。
-
----
-
-# 59. Completion Criteria
-
-代码完成必须满足：
-
-```text
-typecheck passes
-unit tests pass
-integration tests pass
-core screenshot tests pass
-no shell command interpolation
-no credentials persisted
-no blocking SVN call on UI render path
-```
-
-并且人工能够完成：
-
-```text
-checkout
-open
-status
-diff
-add
-delete
-revert
-update
-select
-commit
-history
-```
-
-完整流程。
+后续开发应以“稳定并完成这条链路”为第一目标，而不是继续扩张 SVN feature surface。
