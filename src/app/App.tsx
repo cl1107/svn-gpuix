@@ -14,8 +14,16 @@ import { lastOutputLine } from '../domain/operation';
 import type { Repository } from '../domain/repository';
 import { CheckoutDialog } from '../features/welcome/CheckoutDialog';
 import { detectSvn } from '../services/svn/detectSvn';
+import {
+  parseAppearancePreference,
+  resolveAppearance,
+  subscribeSystemAppearance,
+  type AppearancePreference,
+  type ResolvedAppearance,
+} from './appearance';
+import { ThemeProvider, useTheme } from './ThemeContext';
 import { Titlebar } from './Titlebar';
-import { theme } from './theme';
+import { tokensFor } from './theme';
 import { createAppServices, type AppServices } from './services';
 import { addShortcutListener } from './shortcuts';
 
@@ -43,6 +51,50 @@ export function App({
   preview?: 'changes' | 'history';
   services?: AppServices;
 }) {
+  const [preference, setPreferenceState] = useState<AppearancePreference>('system');
+  const [systemAppearance, setSystemAppearance] = useState<ResolvedAppearance>('light');
+
+  useEffect(() => {
+    let cancelled = false;
+    services.settings.load().then((settings) => {
+      if (!cancelled) setPreferenceState(parseAppearancePreference(settings.appearance));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [services]);
+
+  useEffect(() => {
+    if (preference !== 'system') return;
+    return subscribeSystemAppearance(setSystemAppearance);
+  }, [preference]);
+
+  const setPreference = useCallback(
+    (next: AppearancePreference) => {
+      setPreferenceState(next);
+      void services.settings.setAppearance(next);
+    },
+    [services],
+  );
+
+  const resolved = resolveAppearance(preference, systemAppearance);
+  const tokens = tokensFor(resolved);
+
+  return (
+    <ThemeProvider tokens={tokens} preference={preference} resolved={resolved} setPreference={setPreference}>
+      <AppShell preview={preview} services={services} />
+    </ThemeProvider>
+  );
+}
+
+function AppShell({
+  preview,
+  services,
+}: {
+  preview?: 'changes' | 'history';
+  services: AppServices;
+}) {
+  const theme = useTheme();
   const [svn, setSvn] = useState<SvnProbe>({ status: 'checking' });
   const [repository, setRepository] = useState<Repository | null>(null);
   const [recents, setRecents] = useState<RecentItem[]>([]);
