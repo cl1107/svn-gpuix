@@ -1,4 +1,5 @@
-import { font, theme } from '../app/theme';
+import { useTheme } from '../app/ThemeContext';
+import { font } from '../app/theme';
 import { STATUS_LETTER, type SvnChangeStatus } from '../domain/change';
 
 const tone: Record<SvnChangeStatus, { color: string; background: string }> = {
@@ -16,6 +17,7 @@ const tone: Record<SvnChangeStatus, { color: string; background: string }> = {
 };
 
 export function StatusBadge({ status }: { status: SvnChangeStatus }) {
+  const theme = useTheme();
   const { color, background } = tone[status];
   return (
     <div

@@ -1,4 +1,5 @@
-import { font, theme } from '../app/theme';
+import { useTheme } from '../app/ThemeContext';
+import { font } from '../app/theme';
 
 export function Checkbox({
   checked,
@@ -9,6 +10,8 @@ export function Checkbox({
   onClick?: () => void;
   testId?: string;
 }) {
+
+  const theme = useTheme();
   return (
     <div
       testId={testId}

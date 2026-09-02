@@ -1,7 +1,9 @@
-import { theme, font } from '../app/theme';
+import { useTheme } from '../app/ThemeContext';
+import { font } from '../app/theme';
 import type { AppError } from '../domain/error';
 
 export function ErrorBanner({ error, testId }: { error: AppError; testId?: string }) {
+  const theme = useTheme();
   return (
     <div
       testId={testId}

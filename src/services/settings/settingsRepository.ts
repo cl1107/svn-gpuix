@@ -2,11 +2,13 @@ import { mkdir, rename } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { upsertRecent, type RecentWorkingCopy } from '../../domain/repository';
+import { parseAppearancePreference, type AppearancePreference } from '../../app/appearance';
 
 export interface Settings {
   version: 1;
   recentWorkingCopies: RecentWorkingCopy[];
   lastWorkingCopy?: string;
+  appearance: AppearancePreference;
   window?: {
     width: number;
     height: number;
@@ -28,6 +30,7 @@ export function defaultSettings(): Settings {
   return {
     version: 1,
     recentWorkingCopies: [],
+    appearance: 'system',
   };
 }
 
@@ -41,6 +44,7 @@ export function parseSettings(raw: unknown): Settings {
   const settings: Settings = {
     version: 1,
     recentWorkingCopies: recents,
+    appearance: parseAppearancePreference(raw.appearance),
   };
 
   if (typeof raw.lastWorkingCopy === 'string' && raw.lastWorkingCopy.length > 0) {
@@ -90,6 +94,13 @@ export class SettingsRepository {
       lastWorkingCopy: path,
       recentWorkingCopies: upsertRecent(current.recentWorkingCopies, path, lastOpenedAt),
     };
+    await this.save(next);
+    return next;
+  }
+
+  async setAppearance(appearance: AppearancePreference): Promise<Settings> {
+    const current = await this.load();
+    const next: Settings = { ...current, appearance };
     await this.save(next);
     return next;
   }

@@ -1,4 +1,5 @@
-import { theme, font } from '../app/theme';
+import { useTheme } from '../app/ThemeContext';
+import { font } from '../app/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -26,6 +27,8 @@ export function Button({
   grow?: boolean;
   testId?: string;
 }) {
+
+  const theme = useTheme();
   const filled = variant === 'primary' || variant === 'danger';
   const metrics = sizeStyle[size];
   const backgroundColor = variant === 'danger' ? theme.danger : variant === 'primary' ? theme.accent : theme.panel;

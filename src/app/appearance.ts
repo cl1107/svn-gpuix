@@ -25,7 +25,7 @@ export async function readSystemAppearance(): Promise<ResolvedAppearance> {
     ]);
     if (exitCode === 0 && stdout.trim() === 'Dark') return 'dark';
   } catch {
-    // GPUIX 0.7 has no appearance subscription; macOS defaults miss → light.
+    // GPUIX 0.7 没有系统外观订阅，macOS defaults 读失败则当浅色。
   }
   return 'light';
 }

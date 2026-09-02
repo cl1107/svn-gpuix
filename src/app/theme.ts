@@ -1,49 +1,13 @@
-/** 浅色以 Figma 稿为准；深色是独立 palette，不是旧 Spec Dark 草案。 */
+/** 浅色 token 以 Figma 浅色稿为准。深色是独立 palette，key 必须成对。 */
 
 export type ThemeMode = 'light' | 'dark';
-export type ThemePreference = 'light' | 'dark' | 'system';
 
-export type ThemeTokens = {
-  bg: string;
-  sidebar: string;
-  panel: string;
-  panelHover: string;
-  overlay: string;
-  overlayScrim: string;
-  border: string;
-  text: string;
-  textMuted: string;
-  textSubtle: string;
-  accent: string;
-  accentHover: string;
-  accentSoft: string;
-  accentBadge: string;
-  accentText: string;
-  danger: string;
-  dangerBg: string;
-  warning: string;
-  success: string;
-  added: string;
-  addedBg: string;
-  deleted: string;
-  deletedBg: string;
-  modified: string;
-  modifiedBg: string;
-  unversioned: string;
-  unversionedBg: string;
-  replaced: string;
-  replacedBg: string;
-  conflicted: string;
-  conflictedBg: string;
-};
-
-export const lightTheme: ThemeTokens = {
+export const lightTheme = {
   bg: '#F8F9FB',
   sidebar: '#F1F4F7',
   panel: '#FFFFFF',
   panelHover: '#F8F9FB',
   overlay: '#E8F0FF',
-  overlayScrim: 'rgba(23, 28, 41, 0.28)',
   border: '#DFE4EC',
   text: '#171C29',
   textMuted: '#667085',
@@ -54,7 +18,6 @@ export const lightTheme: ThemeTokens = {
   accentBadge: '#D9E5FF',
   accentText: '#FFFFFF',
   danger: '#D13845',
-  dangerBg: '#FEF2F2',
   warning: '#D4781F',
   success: '#24945C',
   added: '#24945C',
@@ -69,57 +32,54 @@ export const lightTheme: ThemeTokens = {
   replacedBg: '#F3E8FF',
   conflicted: '#D13845',
   conflictedBg: '#FFEDF0',
-};
+} as const;
 
-export const darkTheme: ThemeTokens = {
-  bg: '#12151C',
-  sidebar: '#161A22',
-  panel: '#1C212B',
-  panelHover: '#242A36',
-  overlay: '#1A2744',
-  overlayScrim: 'rgba(0, 0, 0, 0.48)',
-  border: '#2E3644',
+/** 占位深色稿，视觉可整表替换，勿改 key。 */
+export const darkTheme = {
+  bg: '#16181D',
+  sidebar: '#12141A',
+  panel: '#1C1F26',
+  panelHover: '#22262E',
+  overlay: '#1E2A44',
+  border: '#2C313C',
   text: '#E8ECF2',
   textMuted: '#9AA3B2',
-  textSubtle: '#6E7787',
-  accent: '#5B82F6',
-  accentHover: '#7A9AFF',
-  accentSoft: '#1E2A4A',
-  accentBadge: '#243868',
+  textSubtle: '#6B7380',
+  accent: '#5B8CFF',
+  accentHover: '#7AA0FF',
+  accentSoft: '#1E2A44',
+  accentBadge: '#243056',
   accentText: '#FFFFFF',
-  danger: '#E85A64',
-  dangerBg: '#3A1D22',
-  warning: '#E09A3A',
-  success: '#3DCE7A',
-  added: '#3DCE7A',
-  addedBg: '#16301F',
-  deleted: '#E85A64',
-  deletedBg: '#3A1D22',
-  modified: '#E09A3A',
-  modifiedBg: '#332414',
+  danger: '#F07178',
+  warning: '#E0A15A',
+  success: '#4FBF82',
+  added: '#4FBF82',
+  addedBg: '#143024',
+  deleted: '#F07178',
+  deletedBg: '#3A1A1E',
+  modified: '#E0A15A',
+  modifiedBg: '#3A2A14',
   unversioned: '#9AA3B2',
-  unversionedBg: '#252A33',
-  replaced: '#A78BFA',
+  unversionedBg: '#22262E',
+  replaced: '#B794F4',
   replacedBg: '#2A1F3D',
-  conflicted: '#E85A64',
-  conflictedBg: '#3A1D22',
-};
+  conflicted: '#F07178',
+  conflictedBg: '#3A1A1E',
+} as const;
+
+export type ThemeTokens = { readonly [K in keyof typeof lightTheme]: string };
 
 export const palettes: Record<ThemeMode, ThemeTokens> = {
   light: lightTheme,
   dark: darkTheme,
 };
 
-export function resolveAppearance(preference: ThemePreference, system: ThemeMode): ThemeMode {
-  return preference === 'system' ? system : preference;
-}
-
-export function tokensFor(mode: ThemeMode): ThemeTokens {
+export function resolveTheme(mode: ThemeMode): ThemeTokens {
   return palettes[mode];
 }
 
-/** Preview / 未接 Provider 时的浅色默认。live UI 必须用解析后的 token。 */
-export const theme: ThemeTokens = lightTheme;
+/** @deprecated 用 useTheme()；无 Provider 时回退浅色以免测试炸。 */
+export const theme = lightTheme;
 
 export const font = {
   ui: 'SF Pro Text',

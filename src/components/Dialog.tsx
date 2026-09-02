@@ -1,5 +1,6 @@
+import { useTheme } from '../app/ThemeContext';
 import type { ReactNode } from 'react';
-import { font, theme } from '../app/theme';
+import { font } from '../app/theme';
 import { Button } from './Button';
 import { ErrorBanner } from './ErrorBanner';
 import type { AppError } from '../domain/error';
@@ -29,6 +30,8 @@ export function Dialog({
   onConfirm: () => void;
   children?: ReactNode;
 }) {
+
+  const theme = useTheme();
   return (
     <div
       testId={`${testId}-overlay`}
