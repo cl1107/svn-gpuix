@@ -1,7 +1,8 @@
+import { useTheme } from '../../app/ThemeContext';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from 'zustand/react';
 import { addShortcutListener } from '../../app/shortcuts';
-import { font, layout, theme } from '../../app/theme';
+import { font, layout } from '../../app/theme';
 import type { CommitClient } from '../../application/commitChanges';
 import { commitChanges } from '../../application/commitChanges';
 import { toAppError } from '../../application/errors';
@@ -87,6 +88,8 @@ export function RepositoryScreen({
   noticeError?: AppError | null;
   onSwitchWorkingCopy?: (path: string) => void;
 }) {
+
+  const theme = useTheme();
   const live = Boolean(repository && svn);
   const [store] = useState(() =>
     createRepositoryStore(
