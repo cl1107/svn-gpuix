@@ -1,16 +1,17 @@
-export type AppearancePreference = 'light' | 'dark' | 'system';
-export type ResolvedAppearance = 'light' | 'dark';
+import { resolveAppearance as resolveThemeAppearance, type ThemeMode, type ThemePreference } from './theme';
+
+export type AppearancePreference = ThemePreference;
+export type ResolvedAppearance = ThemeMode;
+
+export { resolveAppearance } from './theme';
 
 export function parseAppearancePreference(value: unknown): AppearancePreference {
   if (value === 'light' || value === 'dark' || value === 'system') return value;
   return 'system';
 }
 
-export function resolveAppearance(
-  preference: AppearancePreference,
-  system: ResolvedAppearance,
-): ResolvedAppearance {
-  return preference === 'system' ? system : preference;
+export function resolvePreference(preference: AppearancePreference, system: ResolvedAppearance): ResolvedAppearance {
+  return resolveThemeAppearance(preference, system);
 }
 
 export async function readSystemAppearance(): Promise<ResolvedAppearance> {
@@ -25,7 +26,7 @@ export async function readSystemAppearance(): Promise<ResolvedAppearance> {
     ]);
     if (exitCode === 0 && stdout.trim() === 'Dark') return 'dark';
   } catch {
-    // GPUIX 0.7 没有系统外观订阅，macOS defaults 读失败则当浅色。
+    // GPUIX 0.7 has no appearance event; missing AppleInterfaceStyle means light.
   }
   return 'light';
 }

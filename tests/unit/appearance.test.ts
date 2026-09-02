@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { parseAppearancePreference, resolveAppearance } from '../../src/app/appearance';
-import { darkTheme, lightTheme, resolveTheme } from '../../src/app/theme';
+import { darkTheme, lightTheme, tokensFor } from '../../src/app/theme';
 
 describe('appearance', () => {
   test('未知值回退 system', () => {
@@ -17,9 +17,9 @@ describe('appearance', () => {
   });
 
   test('resolveTheme 浅深 key 成对', () => {
-    expect(Object.keys(resolveTheme('light'))).toEqual(Object.keys(lightTheme));
-    expect(Object.keys(resolveTheme('dark'))).toEqual(Object.keys(darkTheme));
-    expect(resolveTheme('light').bg).toBe('#F8F9FB');
-    expect(resolveTheme('dark').bg).toBe('#16181D');
+    expect(Object.keys(tokensFor('light'))).toEqual(Object.keys(lightTheme));
+    expect(Object.keys(tokensFor('dark'))).toEqual(Object.keys(darkTheme));
+    expect(tokensFor('light').bg).toBe('#F8F9FB');
+    expect(tokensFor('dark').bg).toBe('#16181D');
   });
 });
