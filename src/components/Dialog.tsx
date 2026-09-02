@@ -30,6 +30,7 @@ export function Dialog({
   onConfirm: () => void;
   children?: ReactNode;
 }) {
+
   const theme = useTheme();
   return (
     <div
