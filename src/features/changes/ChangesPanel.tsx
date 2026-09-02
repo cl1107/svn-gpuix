@@ -1,6 +1,7 @@
+import { useTheme } from '../../app/ThemeContext';
 import { useMemo, useState } from 'react';
 import { Icon } from '../../app/icons';
-import { font, layout, theme } from '../../app/theme';
+import { font, layout } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { Checkbox } from '../../components/Checkbox';
 import { ErrorBanner } from '../../components/ErrorBanner';
@@ -27,6 +28,8 @@ export function ChangesPanel({
   onCommit: () => void;
   onRefresh: () => void;
 }) {
+
+  const theme = useTheme();
   const changes = useRepositoryStore(selectChanges);
   const checkedPaths = useRepositoryStore(selectCheckedPaths);
   const selectedPath = useRepositoryStore(selectSelectedPath);
@@ -181,6 +184,7 @@ export function ChangesPanel({
 }
 
 function CommitComposer({ onCommit }: { onCommit: () => void }) {
+  const theme = useTheme();
   const changes = useRepositoryStore(selectChanges);
   const checkedPaths = useRepositoryStore(selectCheckedPaths);
   const commitMessage = useRepositoryStore(selectCommitMessage);
