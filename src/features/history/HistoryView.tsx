@@ -87,11 +87,11 @@ export function HistoryView({ onRefresh }: { onRefresh: () => void }) {
               gap: 8,
             }}
           >
-            <text style={{ color: theme.textSubtle, fontSize: 14, fontFamily: font.ui }}⌦</text>
+            <text style={{ color: theme.textSubtle, fontSize: 14, fontFamily: font.ui }}>\u2315</text>
             <input
               testId="history-filter"
               value={filter}
-              placeholder="Search messages, authors, revisions…"
+              placeholder="Search messages, authors, revisions\u2026"
               onChange={(event) => setFilter(event.value ?? '')}
               style={{
                 flexGrow: 1,
@@ -114,7 +114,7 @@ export function HistoryView({ onRefresh }: { onRefresh: () => void }) {
         {loading && revisions.length === 0 ? (
           <div style={{ padding: 20 }}>
             <text testId="history-loading" style={{ color: theme.textMuted, fontSize: 13, fontFamily: font.ui }}>
-              Loading history…
+              Loading history\u2026
             </text>
           </div>
         ) : visible.length === 0 ? (
@@ -180,7 +180,7 @@ export function HistoryView({ onRefresh }: { onRefresh: () => void }) {
                       {rev.message.trim() ? rev.message.split('\n')[0] : '(no message)'}
                     </text>
                     <text style={{ color: theme.textMuted, fontSize: 11, fontFamily: font.ui }}>
-                      {`${rev.author ?? 'unknown'} · ${formatRevisionDate(rev.date)}`}
+                      {`${rev.author ?? 'unknown'} \u00b7 ${formatRevisionDate(rev.date)}`}
                     </text>
                   </div>
                 </div>
@@ -208,7 +208,7 @@ export function HistoryView({ onRefresh }: { onRefresh: () => void }) {
           <>
             <text style={{ color: theme.text, fontSize: 20, fontFamily: font.mono }}>{`r${selected.revision}`}</text>
             <text style={{ color: theme.textMuted, fontSize: 13, fontFamily: font.ui }}>
-              {`${selected.author ?? 'unknown'} · ${formatRevisionDate(selected.date)}`}
+              {`${selected.author ?? 'unknown'} \u00b7 ${formatRevisionDate(selected.date)}`}
             </text>
             <text style={{ color: theme.text, fontSize: 15, fontFamily: font.ui }}>
               {selected.message.trim() ? selected.message : '(no message)'}
