@@ -15,7 +15,7 @@ function change(path: string, status: WorkingCopyChange['status']): WorkingCopyC
 }
 
 function liveStore() {
-  return createRepositoryStore({ live: true, repository: repo, page: 'changes' });
+  return createRepositoryStore({ repository: repo, page: 'changes', refreshing: true });
 }
 
 describe('createRepositoryStore', () => {
@@ -76,7 +76,7 @@ describe('createRepositoryStore', () => {
     expect(state.statusError).toBeNull();
   });
 
-  test('resetWorkingCopy 清空 live 字段并换上新仓库', () => {
+  test('resetWorkingCopy 切 working copy 时清空草稿、mutation 和 history', () => {
     const store = liveStore();
     store.getState().applyRefreshResult({
       repository: repo,
@@ -84,9 +84,9 @@ describe('createRepositoryStore', () => {
       checkedPaths: new Set(['a.ts']),
       selectedPath: 'a.ts',
     });
-    store.getState().applyHistory([
-      { revision: 3, message: 'hi', changedPaths: [] },
-    ]);
+    store.getState().applyHistory([{ revision: 3, message: 'hi', changedPaths: [] }]);
+    store.getState().setCommitMessage('wip');
+    expect(store.getState().tryBeginMutation('update')).toBe(true);
     store.getState().setStatusError({
       kind: 'unknown',
       title: 'x',
@@ -99,9 +99,70 @@ describe('createRepositoryStore', () => {
     expect(state.changes).toEqual([]);
     expect(state.checkedPaths.size).toBe(0);
     expect(state.selectedPath).toBeNull();
+    expect(state.commitMessage).toBe('');
     expect(state.statusError).toBeNull();
     expect(state.history).toEqual([]);
     expect(state.selectedRevision).toBeNull();
     expect(state.historyError).toBeNull();
+    expect(state.mutating).toBeNull();
+    expect(state.mutationError).toBeNull();
+    expect(state.operationLine).toBeNull();
+  });
+
+  test('tryBeginMutation 原子占位，第二次调用不能覆盖第一次', () => {
+    const store = liveStore();
+    expect(store.getState().tryBeginMutation('update')).toBe(true);
+    expect(store.getState().mutating).toBe('update');
+    expect(store.getState().tryBeginMutation('commit')).toBe(false);
+    expect(store.getState().mutating).toBe('update');
+    store.getState().endMutation();
+    expect(store.getState().mutating).toBeNull();
+  });
+
+  test('tryBeginMutation 在 OperationManager 已 running 时拒绝，且不写 store', () => {
+    const store = liveStore();
+    expect(store.getState().tryBeginMutation('add', 'commit')).toBe(false);
+    expect(store.getState().mutating).toBeNull();
+  });
+
+  test('commit 失败回滚 message 与 selection', () => {
+    const store = liveStore();
+    store.getState().setCommitMessage('Fix login');
+    store.getState().toggleAll(['a.ts', 'b.ts']);
+    expect(store.getState().tryBeginMutation('commit')).toBe(true);
+    const previousMessage = 'Fix login';
+    const previousChecked = new Set(store.getState().checkedPaths);
+    store.getState().applyCommitSuccess();
+    expect(store.getState().commitMessage).toBe('');
+    expect(store.getState().checkedPaths.size).toBe(0);
+    store.getState().restoreCommitDraft({ message: previousMessage, checkedPaths: previousChecked });
+    store.getState().setMutationError({
+      kind: 'command-failed',
+      title: 'Commit failed',
+      message: 'boom',
+    });
+    store.getState().endMutation();
+    const state = store.getState();
+    expect(state.commitMessage).toBe('Fix login');
+    expect([...state.checkedPaths].sort()).toEqual(['a.ts', 'b.ts']);
+    expect(state.mutating).toBeNull();
+    expect(state.mutationError?.title).toBe('Commit failed');
+  });
+
+  test('preview 初始态由调用方注入，store 不依赖 fixtures', () => {
+    const store = createRepositoryStore({
+      page: 'history',
+      changes: [change('preview.ts', 'modified')],
+      checkedPaths: ['preview.ts'],
+      selectedPath: 'preview.ts',
+      commitMessage: 'preview message',
+      history: [{ revision: 1, message: 'first', changedPaths: [] }],
+      selectedRevision: 1,
+    });
+    expect(store.getState().page).toBe('history');
+    expect(store.getState().changes[0]?.path).toBe('preview.ts');
+    expect(store.getState().commitMessage).toBe('preview message');
+    expect(store.getState().selectedRevision).toBe(1);
+    expect(store.getState().refreshing).toBe(false);
   });
 });

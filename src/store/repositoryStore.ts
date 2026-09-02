@@ -1,11 +1,10 @@
 import { createStore } from 'zustand/vanilla';
-import { fixtureChanges, fixtureCheckedPaths, fixtureHistory } from '../design/fixtures';
 import type { WorkingCopyChange } from '../domain/change';
 import type { AppError } from '../domain/error';
 import type { MutationKind } from '../domain/operation';
 import type { Repository } from '../domain/repository';
+import type { RepositoryPage } from '../domain/repositoryPage';
 import type { SvnRevision } from '../domain/revision';
-import type { RepositoryPage } from '../features/repository/Sidebar';
 
 export interface RefreshResult {
   repository: Repository;
@@ -45,34 +44,40 @@ export interface RepositoryStoreActions {
   applyHistory: (revisions: SvnRevision[]) => void;
   setHistoryLoading: (loading: boolean) => void;
   setHistoryError: (error: AppError | null) => void;
-  beginMutation: (kind: MutationKind) => void;
+  tryBeginMutation: (kind: MutationKind, operationRunning?: MutationKind | null) => boolean;
   endMutation: () => void;
   setMutationError: (error: AppError | null) => void;
   setOperationLine: (line: string | null) => void;
+  applyCommitSuccess: () => void;
+  restoreCommitDraft: (input: { message: string; checkedPaths: Iterable<string> }) => void;
   resetWorkingCopy: (repository?: Repository) => void;
 }
 
 export type RepositoryState = RepositoryStoreState & RepositoryStoreActions;
 
 export interface CreateRepositoryStoreInput {
-  live: boolean;
   page?: RepositoryPage;
   repository?: Repository;
-  initialCommitMessage?: string;
+  changes?: WorkingCopyChange[];
+  checkedPaths?: Iterable<string>;
+  selectedPath?: string | null;
+  commitMessage?: string;
+  history?: SvnRevision[];
+  selectedRevision?: number | null;
+  refreshing?: boolean;
 }
 
 function initialState(input: CreateRepositoryStoreInput): RepositoryStoreState {
-  const live = input.live;
   return {
     page: input.page ?? 'changes',
     repository: input.repository,
-    changes: live ? [] : fixtureChanges,
-    checkedPaths: new Set(live ? [] : fixtureCheckedPaths),
-    selectedPath: live ? null : (fixtureChanges[0]?.path ?? null),
-    commitMessage: live ? (input.initialCommitMessage ?? '') : 'Fix profile avatar fallback and API mapping',
-    history: live ? [] : fixtureHistory,
-    selectedRevision: live ? null : (fixtureHistory[0]?.revision ?? null),
-    refreshing: live,
+    changes: input.changes ?? [],
+    checkedPaths: new Set(input.checkedPaths ?? []),
+    selectedPath: input.selectedPath ?? null,
+    commitMessage: input.commitMessage ?? '',
+    history: input.history ?? [],
+    selectedRevision: input.selectedRevision ?? null,
+    refreshing: input.refreshing ?? false,
     historyLoading: false,
     statusError: null,
     historyError: null,
@@ -82,8 +87,8 @@ function initialState(input: CreateRepositoryStoreInput): RepositoryStoreState {
   };
 }
 
-export function createRepositoryStore(input: CreateRepositoryStoreInput) {
-  return createStore<RepositoryState>()((set) => ({
+export function createRepositoryStore(input: CreateRepositoryStoreInput = {}) {
+  return createStore<RepositoryState>()((set, get) => ({
     ...initialState(input),
 
     setPage: (page) => set({ page }),
@@ -134,10 +139,20 @@ export function createRepositoryStore(input: CreateRepositoryStoreInput) {
     setHistoryLoading: (historyLoading) => set({ historyLoading }),
     setHistoryError: (historyError) => set({ historyError }),
 
-    beginMutation: (kind) => set({ mutating: kind, mutationError: null }),
+    tryBeginMutation: (kind, operationRunning) => {
+      const state = get();
+      if (state.mutating !== null || operationRunning) return false;
+      set({ mutating: kind, mutationError: null });
+      return true;
+    },
+
     endMutation: () => set({ mutating: null, operationLine: null }),
     setMutationError: (mutationError) => set({ mutationError }),
     setOperationLine: (operationLine) => set({ operationLine }),
+
+    applyCommitSuccess: () => set({ commitMessage: '', checkedPaths: new Set() }),
+    restoreCommitDraft: ({ message, checkedPaths }) =>
+      set({ commitMessage: message, checkedPaths: new Set(checkedPaths) }),
 
     resetWorkingCopy: (repository) =>
       set({
@@ -145,10 +160,16 @@ export function createRepositoryStore(input: CreateRepositoryStoreInput) {
         changes: [],
         checkedPaths: new Set(),
         selectedPath: null,
+        commitMessage: '',
         statusError: null,
         history: [],
         selectedRevision: null,
         historyError: null,
+        mutating: null,
+        mutationError: null,
+        operationLine: null,
+        refreshing: false,
+        historyLoading: false,
       }),
   }));
 }
