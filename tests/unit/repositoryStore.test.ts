@@ -86,7 +86,6 @@ describe('createRepositoryStore', () => {
     });
     store.getState().applyHistory([{ revision: 3, message: 'hi', changedPaths: [] }]);
     store.getState().setCommitMessage('wip');
-    expect(store.getState().tryBeginMutation('update')).toBe(true);
     store.getState().setStatusError({
       kind: 'unknown',
       title: 'x',
@@ -105,8 +104,6 @@ describe('createRepositoryStore', () => {
     expect(state.selectedRevision).toBeNull();
     expect(state.historyError).toBeNull();
     expect(state.mutating).toBeNull();
-    expect(state.mutationError).toBeNull();
-    expect(state.operationLine).toBeNull();
   });
 
   test('tryBeginMutation 原子占位，第二次调用不能覆盖第一次', () => {
@@ -147,6 +144,16 @@ describe('createRepositoryStore', () => {
     expect([...state.checkedPaths].sort()).toEqual(['a.ts', 'b.ts']);
     expect(state.mutating).toBeNull();
     expect(state.mutationError?.title).toBe('Commit failed');
+  });
+
+  test('resetWorkingCopy 不解锁正在进行的 mutation', () => {
+    const store = liveStore();
+    expect(store.getState().tryBeginMutation('update')).toBe(true);
+    store.getState().setOperationLine('Updating…');
+    store.getState().resetWorkingCopy({ ...repo, rootPath: '/tmp/other', revision: 1 });
+    expect(store.getState().mutating).toBe('update');
+    expect(store.getState().operationLine).toBe('Updating…');
+    expect(store.getState().repository?.rootPath).toBe('/tmp/other');
   });
 
   test('preview 初始态由调用方注入，store 不依赖 fixtures', () => {
