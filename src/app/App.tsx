@@ -66,8 +66,8 @@ export function App({
 
   useEffect(() => {
     if (preference !== 'system') return;
-    return subscribeSystemAppearance(setSystemAppearance);
-  }, [preference]);
+    return subscribeSystemAppearance(services.runner, setSystemAppearance);
+  }, [preference, services.runner]);
 
   const setPreference = useCallback(
     (next: AppearancePreference) => {

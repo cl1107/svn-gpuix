@@ -1,4 +1,5 @@
-import { resolveAppearance as resolveThemeAppearance, type ThemeMode, type ThemePreference } from './theme';
+import type { CommandRunner } from '../services/svn/commandRunner';
+import { type ThemeMode, type ThemePreference } from './theme';
 
 export type AppearancePreference = ThemePreference;
 export type ResolvedAppearance = ThemeMode;
@@ -10,34 +11,24 @@ export function parseAppearancePreference(value: unknown): AppearancePreference 
   return 'system';
 }
 
-export function resolvePreference(preference: AppearancePreference, system: ResolvedAppearance): ResolvedAppearance {
-  return resolveThemeAppearance(preference, system);
-}
-
-export async function readSystemAppearance(): Promise<ResolvedAppearance> {
+export async function readSystemAppearance(runner: CommandRunner): Promise<ResolvedAppearance> {
   try {
-    const proc = Bun.spawn(['defaults', 'read', '-g', 'AppleInterfaceStyle'], {
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
-    const [stdout, exitCode] = await Promise.all([
-      new Response(proc.stdout).text(),
-      proc.exited,
-    ]);
-    if (exitCode === 0 && stdout.trim() === 'Dark') return 'dark';
+    const result = await runner.run({ argv: ['defaults', 'read', '-g', 'AppleInterfaceStyle'] });
+    return result.stdout.trim() === 'Dark' ? 'dark' : 'light';
   } catch {
-    // GPUIX 0.7 has no appearance event; missing AppleInterfaceStyle means light.
+    // Light mode omits AppleInterfaceStyle (nonzero). Missing binary also → light.
+    return 'light';
   }
-  return 'light';
 }
 
 export function subscribeSystemAppearance(
+  runner: CommandRunner,
   onChange: (mode: ResolvedAppearance) => void,
   intervalMs = 2000,
 ): () => void {
   let cancelled = false;
   const tick = async () => {
-    const mode = await readSystemAppearance();
+    const mode = await readSystemAppearance(runner);
     if (!cancelled) onChange(mode);
   };
   void tick();
