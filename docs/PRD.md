@@ -194,38 +194,126 @@ svn commit src/App.ts src/api.ts
 
 # 6. 主界面
 
-推荐默认布局：
+Figma 设计稿以 **1440 × 960** 为基准画布。Working Copy 打开后，窗口采用：
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│ ProjectName      r128      Refresh       Update      History │
-├───────────────────┬──────────────────────────────────────────┤
-│ CHANGES           │ src/components/App.tsx                  │
-│                   │                                          │
-│ ☑ M App.tsx       │  10 │ const value = 1                   │
-│ ☑ M api.ts        │ -11 │ const oldValue = 1                │
-│ ☐ ? new-file.ts   │ +11 │ const newValue = 2                │
-│   ! removed.ts    │                                          │
-│                   │                                          │
-│                   │                                          │
-│                   │                                          │
-├───────────────────┴──────────────────────────────────────────┤
-│ Commit Message                                               │
-│ ┌──────────────────────────────────────────────────────────┐ │
-│ │ fix: update user handling                                │ │
-│ └──────────────────────────────────────────────────────────┘ │
-│                                            Commit 2 Files    │
-└──────────────────────────────────────────────────────────────┘
+macOS Titlebar
++
+Sidebar
++
+Master / Detail
 ```
 
-推荐比例：
+的桌面应用布局，而不是传统“顶部工具栏 + 左侧文件树 + 全宽底部提交栏”。
+
+参考结构：
 
 ```text
-Changed Files: 280–340px
-Diff: flex-grow
-Commit panel: 120–160px
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ● ● ●   Revision                                             macOS Titlebar │
+├──────────────┬────────────────────────┬─────────────────────────────────────┤
+│ Sidebar      │ Changes Pane           │ Diff Pane                           │
+│ 238px        │ 396px                  │ flex                                │
+│              │                        │                                     │
+│ Workspace    │ Changes       Refresh  │ selected/file/path    Revert   …    │
+│ Switcher     │ 6 files                │ Modified · +18 · -6                 │
+│              │ [ Filter changed... ]  ├─────────────────────────────────────┤
+│ Changes      │ ☑ Select all           │                                     │
+│ History      │                        │ Unified Diff                        │
+│ Working Copy │ ☑ M UserCard.vue       │                                     │
+│              │ ☑ M user.ts            │                                     │
+│ SVN          │ ☑ A profile.vue        │                                     │
+│ r18427       │ ...                    │                                     │
+│ Up to date   │                        │                                     │
+│ [ Update ]   │ ─────────────────────  │                                     │
+│              │ Commit                 │                                     │
+│ Quick actions│ [ Commit message... ]  │                                     │
+│              │ [ Commit 6 files ]     │                                     │
+└──────────────┴────────────────────────┴─────────────────────────────────────┘
 ```
 
+### 6.1 Titlebar
+
+窗口顶部保留约 **44px** 的 macOS 原生窗口区域：
+
+- 左侧为 traffic-light window controls；
+- 展示产品名称 `Revision`；
+- 不承载 Refresh / Update / History 等业务工具栏操作。
+
+业务操作放在其对应的内容区域内，减少顶部工具栏密度。
+
+### 6.2 Sidebar
+
+Working Copy 页面固定显示约 **238px** 宽的 Sidebar。
+
+自上而下包含：
+
+1. **Workspace Switcher**
+   - Working Copy 名称；
+   - 本地路径；
+   - 切换入口。
+2. **Workspace Navigation**
+   - Changes；
+   - History；
+   - Working Copy。
+3. **SVN Update Card**
+   - 当前 revision；
+   - working copy 状态；
+   - Update 按钮。
+4. **Quick actions**
+   - Add unversioned files；
+   - Revert selected；
+   - More SVN actions。
+5. 底部 SVN CLI 版本信息。
+
+Sidebar 负责导航和 working copy 级操作，不承担 Changed Files 列表。
+
+### 6.3 Changes / Diff 主工作区
+
+`Changes` 页面为三栏结构：
+
+| 区域 | Figma 参考宽度 | 说明 |
+| --- | ---: | --- |
+| Sidebar | 238px | 固定 |
+| Changed Files Pane | 396px | 固定 / 可在适配时小幅调整 |
+| Diff Pane | 804px @ 1440px | flex-grow |
+
+Changed Files Pane 内部从上到下为：
+
+```text
+Page Header
+File count + Refresh
+Search
+Select all / selected count
+Changed Files list
+Divider
+Commit composer
+```
+
+Commit composer **属于中间 Changes Pane**，不再作为横跨整个窗口的底部固定面板。
+
+Diff Pane 为主要弹性区域，顶部包含当前文件信息和文件级操作，下面展示 diff 内容。
+
+### 6.4 History 主工作区
+
+切换到 `History` 后保留同一 Sidebar，中间和右侧切换为：
+
+```text
+Sidebar 238px
++
+Revision List 454px
++
+Revision Detail 746px @ 1440px
+```
+
+即 Changes 与 History 共用统一的 `Sidebar + List + Detail` 信息架构。
+
+### 6.5 分隔与滚动
+
+- Sidebar / List / Detail 之间使用 1px 分隔线；
+- Changed Files / Revision List 独立滚动；
+- Diff / Revision Detail 独立滚动；
+- 窗口缩放时优先让右侧 Detail 区域伸缩，中间列表保持稳定可读宽度。
 ---
 
 # 7. 功能需求
@@ -374,33 +462,50 @@ normal
 
 # 10. Changed Files
 
-左侧展示所有 working copy change。
+Changed Files 位于主界面的 **中间 Changes Pane**，左侧 Sidebar 仅用于 workspace 导航和 SVN 操作。
 
-每行：
+Pane 顶部包含：
+
+```text
+Changes
+6 files                      Refresh
+
+[ Filter changed files ]
+
+☑ Select all                 6 selected
+────────────────────────────────────
+```
+
+文件列表使用 flat list，不构建 folder tree。
+
+每行视觉结构：
 
 ```text
 Checkbox
-Status
-Filename
+Status Badge
 Relative Path
+Status Label
+Disclosure / selection affordance
 ```
 
 例如：
 
 ```text
-☑ M App.tsx
-    src/components/App.tsx
+☑  M  src/components/UserCard.vue
+      Modified
+
+☑  A  src/pages/profile.vue
+      Added
 ```
+
+状态使用紧凑 Badge（`M / A / D / ? / ! / R / C`），路径作为主信息，状态名称作为 secondary text。
 
 排序优先级：
 
 1. path
 2. filename
 
-文件夹不单独构建 tree。
-
-MVP 使用 flat list。
-
+点击文件行后，在右侧 Diff Pane 展示该文件内容；checkbox 仍只控制本次 Commit Selection。
 ---
 
 # 11. Checkbox 规则
@@ -513,14 +618,42 @@ Diff preview is unavailable.
 
 # 14. Commit Message
 
-底部固定 Commit Panel。
+Commit 区域嵌入 **Changes Pane 下半部**，位于 Changed Files list 之后，通过 divider 与文件列表分隔。
+
+它不是横跨主窗口的固定底栏。
+
+布局：
+
+```text
+────────────────────────────────────
+Commit
+
+┌──────────────────────────────────┐
+│ Fix profile avatar fallback...   │
+│                                  │
+│ Optional details…     ⌘↵ commit  │
+└──────────────────────────────────┘
+
+[          Commit 6 files          ]
+
+Commits to current working copy only
+```
+
+Figma 参考：
+
+- 中栏左右 padding：20px；
+- Commit Message：约 120px 高；
+- Commit Button：中栏内全宽，约 42px 高；
+- 快捷键提示位于输入区域右下角。
 
 包含：
 
 ```text
 Commit Message textarea
+Keyboard shortcut hint
 Commit button
 Selected file count
+Secondary helper text
 ```
 
 例如：
@@ -533,6 +666,7 @@ Commit Message 必须非空。
 
 空 message 时 Commit disabled。
 
+切换到 History 等其他 Sidebar 页面时，整个中间 Pane 被对应内容替换，因此 Commit 区域不显示。
 ---
 
 # 15. Commit
@@ -574,10 +708,18 @@ Committed revision 129
 
 # 16. Update
 
-Toolbar：
+Update 不放在全局 Toolbar，而放在 Sidebar 的 **SVN Update Card** 中。
+
+布局示例：
 
 ```text
-Update
+SVN
+
+┌────────────────────────┐
+│ Working copy           │
+│ r18427       [ Update ]│
+│ Up to date             │
+└────────────────────────┘
 ```
 
 执行整个 Working Copy：
@@ -604,6 +746,7 @@ Updated to revision 130
 Refresh Status
 ```
 
+Update Card 中的 revision 和状态同步更新。
 ---
 
 # 17. Revert
@@ -718,24 +861,55 @@ D
 
 # 21. History
 
-Toolbar：
+History 通过 Sidebar 中的：
 
 ```text
 History
 ```
 
-打开 History View。
+进入，不通过顶部 Toolbar 打开独立页面。
 
-页面：
+History 沿用主界面的三栏结构：
 
 ```text
-┌────────┬───────────────┬────────────────┬────────────────────┐
-│ Rev    │ Author        │ Date           │ Message            │
-├────────┼───────────────┼────────────────┼────────────────────┤
-│ r130   │ alice         │ 2 min ago      │ Fix API            │
-│ r129   │ bob           │ Yesterday      │ Update config      │
-│ r128   │ alice         │ Aug 29         │ Initial version    │
-└────────┴───────────────┴────────────────┴────────────────────┘
+┌──────────────┬───────────────────────────┬──────────────────────────────────┐
+│ Sidebar      │ Revision List             │ Revision Detail                  │
+│ 238px        │ 454px                     │ flex / 746px @ 1440              │
+│              │                           │                                  │
+│ Changes      │ History          Refresh  │ r18431              Copy revision│
+│ History      │ Repository revisions      │ author · date                    │
+│ Working Copy │                           │                                  │
+│              │ [ Search history... ]     │ Commit message                   │
+│ SVN Update   │ [All] [My] [Branch]       │ ...                              │
+│              │                           │                                  │
+│              │ r18431  message           │ Changed Paths                    │
+│              │ author   date             │ M / A / D path                   │
+│              │                           │                                  │
+│              │ r18430  message           │ Revision info                    │
+│              │ ...                       │ Revision / Author / Repository   │
+└──────────────┴───────────────────────────┴──────────────────────────────────┘
+```
+
+### 21.1 Revision List
+
+中间 Revision List 顶部包含：
+
+- `History` 标题；
+- `Repository revisions` secondary text；
+- Refresh；
+- 搜索框；
+- 设计稿中的紧凑 filter chips；
+- revision 列表。
+
+每条 revision 使用列表卡片呈现，而不是传统多列表格。
+
+主要信息：
+
+```text
+Revision
+Author
+Date
+Commit Message
 ```
 
 默认加载：
@@ -746,28 +920,40 @@ History
 
 未来可以增加 pagination。
 
-点击 revision：
+### 21.2 Revision Detail
 
-右侧 Detail：
+点击 revision 后，右侧 Revision Detail 展示：
 
 ```text
-Revision
+Revision header
 Author
 Date
+Copy revision action
+
 Commit Message
+
 Changed Paths
+
+Revision Info
+- Revision
+- Author
+- Repository
 ```
 
-MVP 不要求 revision diff。
+Changed Paths 使用状态 Badge + path 的列表形式。
 
+MVP 不要求 revision diff。
 ---
 
 # 22. Refresh
 
-Toolbar 提供：
+Refresh 为当前内容 Pane 的上下文操作，不使用全局 Toolbar。
+
+Changes 页面：
 
 ```text
-Refresh
+Changes                           Refresh
+6 files
 ```
 
 刷新：
@@ -777,52 +963,100 @@ svn status
 svn info
 ```
 
-文件操作完成后自动 Refresh。
+History 页面在 Revision List Header 的相同位置提供 Refresh，以保持页面结构一致。
 
+文件操作完成后自动 Refresh。
 ---
 
 # 23. Repository 信息
 
-Topbar 显示：
+Repository / Working Copy 信息主要分布在 Sidebar，而不是窗口 Topbar。
+
+### 23.1 Workspace Switcher
+
+Sidebar 顶部展示：
 
 ```text
 Working Copy Name
-Revision
-```
-
-Tooltip / secondary text 可显示：
-
-```text
-Repository URL
 Local Path
 ```
 
+例如：
+
+```text
+frontend-web
+~/work/frontend-web
+```
+
+### 23.2 SVN Update Card
+
+显示：
+
+```text
+Working copy
+Revision
+Sync status
+Update
+```
+
+例如：
+
+```text
+r18427
+Up to date
+```
+
+### 23.3 Detail
+
+Repository URL 等更完整信息可在 Working Copy 页面或 History 的 Revision Info 中展示。
+
+窗口最上方 Titlebar 仅作为应用级 chrome，默认不再承担 Working Copy Name / Revision / Refresh / Update / History 等业务信息。
 ---
 
 # 24. Welcome Screen
 
-没有打开 repository 时：
+没有打开 Working Copy 时，不显示 Working Copy Sidebar。
+
+Titlebar 下方使用全宽 Welcome Shell：
 
 ```text
-SVN
-
-A simple SVN client.
-
-[ Open Working Copy ]
-[ Checkout Repository ]
-
-Recent
-────────────────────
-
-project-a
-~/Projects/project-a
-
-project-b
-~/Work/project-b
+┌──────────────────────────────────────────────────────────────┐
+│ ● ● ●   Revision                                            │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│                    A focused SVN client                      │
+│   Open an existing working copy, or check out a repository   │
+│                                                              │
+│       ┌────────────────────┐   ┌────────────────────┐         │
+│       │ Open working copy  │   │ Checkout repository│         │
+│       │                    │   │                    │         │
+│       │ [ Choose folder… ] │   │ [ Checkout… ]     │         │
+│       └────────────────────┘   └────────────────────┘         │
+│                                                              │
+│       Recent working copies                                  │
+│       ┌──────────────────────────────────────────────┐        │
+│       │ frontend-web       r18427   Up to date      │        │
+│       │ ~/work/frontend-web                         │        │
+│       ├──────────────────────────────────────────────┤        │
+│       │ admin-console      r9931    3 local changes │        │
+│       │ ~/work/admin-console                        │        │
+│       └──────────────────────────────────────────────┘        │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-不增加其他功能。
+参考布局：
 
+- 主内容最大宽度约 820px，并居中；
+- `Open working copy` 与 `Checkout repository` 两张 action card 横向并列；
+- 单卡参考宽度约 390px；
+- Recent Working Copies 位于 action cards 下方；
+- Recent item 展示项目名、本地路径、revision 与 working copy 状态；
+- 点击 Recent item 直接打开对应 Working Copy。
+
+Figma 画布底部还放置了 `Checkout preview` 用于展示 Repository URL / Local Path / Configure 的视觉样式；实际 Checkout 流程仍按第 8 节以 Checkout Dialog 承载，不作为 Welcome Screen 常驻模块。
+
+不增加 Dashboard、Repository Browser 等额外首页模块。
 ---
 
 # 25. Loading State
