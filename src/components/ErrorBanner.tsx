@@ -12,7 +12,7 @@ export function ErrorBanner({ error, testId }: { error: AppError; testId?: strin
         borderRadius: 8,
         borderWidth: 1,
         borderColor: theme.danger,
-        backgroundColor: '#FEF2F2',
+        backgroundColor: theme.dangerBg,
         display: 'flex',
         flexDirection: 'column',
         gap: 4,

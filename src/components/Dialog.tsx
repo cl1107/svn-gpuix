@@ -30,7 +30,6 @@ export function Dialog({
   onConfirm: () => void;
   children?: ReactNode;
 }) {
-
   const theme = useTheme();
   return (
     <div
@@ -41,7 +40,7 @@ export function Dialog({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(23, 28, 41, 0.28)',
+        backgroundColor: theme.overlayScrim,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
