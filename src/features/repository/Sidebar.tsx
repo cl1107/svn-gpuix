@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Icon, type IconName } from '../../app/icons';
 import { addShortcutListener } from '../../app/shortcuts';
 import { font, layout, theme } from '../../app/theme';
 import { Button } from '../../components/Button';
@@ -110,13 +111,13 @@ export function Sidebar({
           </text>
           <text style={{ color: theme.textMuted, fontSize: 10, fontFamily: font.ui }}>{workingCopyPath}</text>
         </div>
-        <text style={{ color: theme.textMuted, fontSize: 14, fontFamily: font.ui }}>{menuOpen ? '⌃' : '⌄'}</text>
+        <Icon name={menuOpen ? 'chevronUp' : 'chevronDown'} size={14} color={theme.textMuted} />
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <SectionLabel>WORKSPACE</SectionLabel>
         <NavRow
-          glyph="●"
+          icon="changes"
           label="Changes"
           active={page === 'changes'}
           badge={changeCount > 0 ? String(changeCount) : undefined}
@@ -124,14 +125,14 @@ export function Sidebar({
           onClick={() => onNavigate('changes')}
         />
         <NavRow
-          glyph="◷"
+          icon="history"
           label="History"
           active={page === 'history'}
           testId="nav-history"
           onClick={() => onNavigate('history')}
         />
         <NavRow
-          glyph="⌂"
+          icon="house"
           label="Working Copy"
           active={page === 'working-copy'}
           testId="nav-working-copy"
@@ -178,19 +179,22 @@ export function Sidebar({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 6 }}>
         <SectionLabel>Quick actions</SectionLabel>
         <QuickAction
-          label="＋  Add unversioned files"
+          icon="plus"
+          label="Add unversioned files"
           testId="add-unversioned-files"
           disabled={mutating || !onAddUnversioned}
           onClick={onAddUnversioned}
         />
         <QuickAction
-          label="↶  Revert selected"
+          icon="revert"
+          label="Revert selected"
           testId="revert-selected"
           disabled={mutating || !onRevertSelected}
           onClick={onRevertSelected}
         />
         <QuickAction
-          label="✕  Delete selected"
+          icon="trash"
+          label="Delete selected"
           testId="delete-selected"
           disabled={mutating || !onDeleteSelected}
           onClick={onDeleteSelected}
@@ -305,11 +309,13 @@ function MenuRow({
 }
 
 function QuickAction({
+  icon,
   label,
   testId,
   disabled,
   onClick,
 }: {
+  icon: IconName;
   label: string;
   testId: string;
   disabled?: boolean;
@@ -321,10 +327,15 @@ function QuickAction({
       onClick={disabled ? undefined : onClick}
       style={{
         paddingLeft: 6,
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.45 : 1,
       }}
     >
+      <Icon name={icon} size={13} color={theme.text} />
       <text style={{ color: theme.text, fontSize: 12, fontFamily: font.ui }}>{label}</text>
     </div>
   );
@@ -339,14 +350,14 @@ function SectionLabel({ children }: { children: string }) {
 }
 
 function NavRow({
-  glyph,
+  icon,
   label,
   active,
   badge,
   onClick,
   testId,
 }: {
-  glyph: string;
+  icon: IconName;
   label: string;
   active?: boolean;
   badge?: string;
@@ -371,9 +382,7 @@ function NavRow({
         hover: active ? undefined : { backgroundColor: theme.panelHover },
       }}
     >
-      <text style={{ color: active ? theme.accent : theme.textMuted, fontSize: active ? 10 : 14, fontFamily: font.ui }}>
-        {glyph}
-      </text>
+      <Icon name={icon} size={14} color={active ? theme.accent : theme.textMuted} />
       <text
         style={{
           color: active ? theme.accent : theme.text,

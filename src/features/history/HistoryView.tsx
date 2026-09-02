@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Icon } from '../../app/icons';
 import { font, layout, theme } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ErrorBanner';
@@ -87,7 +88,7 @@ export function HistoryView({ onRefresh }: { onRefresh: () => void }) {
               gap: 8,
             }}
           >
-            <text style={{ color: theme.textSubtle, fontSize: 14, fontFamily: font.ui }}>⌕</text>
+            <Icon name="search" size={14} color={theme.textSubtle} />
             <input
               testId="history-filter"
               value={filter}

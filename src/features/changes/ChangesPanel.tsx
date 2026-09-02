@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Icon } from '../../app/icons';
 import { font, layout, theme } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { Checkbox } from '../../components/Checkbox';
@@ -95,7 +96,7 @@ export function ChangesPanel({
             gap: 8,
           }}
         >
-          <text style={{ color: theme.textSubtle, fontSize: 14, fontFamily: font.ui }}>⌕</text>
+          <Icon name="search" size={14} color={theme.textSubtle} />
           <input
             testId="changes-filter"
             value={filter}

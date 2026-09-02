@@ -1,3 +1,4 @@
+import { Icon } from '../../app/icons';
 import { font, theme } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ErrorBanner';
@@ -92,7 +93,7 @@ export function DiffPanel({
           onClick={onDelete}
           testId="delete-file"
         />
-        <ChromeIcon label="≡" />
+        <ChromeIcon />
       </div>
 
       {error ? (
@@ -201,7 +202,7 @@ function emptyMessage(input: {
   return 'Select a file to view its diff.';
 }
 
-function ChromeIcon({ label }: { label: string }) {
+function ChromeIcon() {
   return (
     <div
       style={{
@@ -216,7 +217,7 @@ function ChromeIcon({ label }: { label: string }) {
         justifyContent: 'center',
       }}
     >
-      <text style={{ color: theme.text, fontSize: 12, fontFamily: font.ui }}>{label}</text>
+      <Icon name="menu" size={14} color={theme.text} />
     </div>
   );
 }
