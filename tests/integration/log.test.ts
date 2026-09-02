@@ -1,0 +1,72 @@
+import { describe, expect, test } from 'bun:test';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { CommandRunner } from '../../src/services/svn/commandRunner';
+import { CliSvnClient } from '../../src/services/svn/SvnClient';
+
+async function run(argv: string[], cwd?: string): Promise<void> {
+  const result = await Bun.spawn(argv, { cwd, stdout: 'pipe', stderr: 'pipe' }).exited;
+  if (result !== 0) throw new Error(`${argv.join(' ')} exited ${result}`);
+}
+
+describe('svn log 集成', () => {
+  test('file:// working copy 能读到最近提交', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'svn-gpuix-log-'));
+    const repo = join(dir, 'repo');
+    const wc = join(dir, 'wc');
+    await run(['svnadmin', 'create', repo]);
+    await run(['svn', 'checkout', `file://${repo}`, wc]);
+    await writeFile(join(wc, 'readme.txt'), 'hello\n');
+    await run(['svn', 'add', 'readme.txt'], wc);
+    await run(['svn', 'commit', '-m', 'init readme'], wc);
+
+    const svn = new CliSvnClient(new CommandRunner());
+    const revisions = await svn.getLog(wc, { limit: 100 });
+    expect(revisions.length).toBeGreaterThanOrEqual(1);
+    expect(revisions[0]?.message).toContain('init readme');
+    expect(revisions[0]?.changedPaths.some((path) => path.path.endsWith('readme.txt'))).toBe(true);
+  }, 15000);
+
+  test('子目录 working copy 只看到该路径的 log', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'svn-gpuix-log-nested-'));
+    const repo = join(dir, 'repo');
+    const rootWc = join(dir, 'root');
+    await run(['svnadmin', 'create', repo]);
+    await run(['svn', 'checkout', `file://${repo}`, rootWc]);
+    await run(['svn', 'mkdir', 'project-a', 'project-b'], rootWc);
+    await run(['svn', 'commit', '-m', 'add project dirs'], rootWc);
+    await writeFile(join(rootWc, 'project-a', 'a.txt'), 'a\n');
+    await run(['svn', 'add', 'project-a/a.txt'], rootWc);
+    await run(['svn', 'commit', '-m', 'init a'], rootWc);
+    await writeFile(join(rootWc, 'project-b', 'b.txt'), 'b\n');
+    await run(['svn', 'add', 'project-b/b.txt'], rootWc);
+    await run(['svn', 'commit', '-m', 'init b'], rootWc);
+
+    const nested = join(dir, 'wc-a');
+    await run(['svn', 'checkout', `file://${repo}/project-a`, nested]);
+
+    const svn = new CliSvnClient(new CommandRunner());
+    const revisions = await svn.getLog(nested, { limit: 100 });
+    const messages = revisions.map((item) => item.message);
+    expect(messages.some((message) => message.includes('init a'))).toBe(true);
+    expect(messages.some((message) => message.includes('init b'))).toBe(false);
+  }, 15000);
+
+  test('commit 后未 update 仍能看到刚提交的 revision', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'svn-gpuix-log-mixed-'));
+    const repo = join(dir, 'repo');
+    const wc = join(dir, 'wc');
+    await run(['svnadmin', 'create', repo]);
+    await run(['svn', 'checkout', `file://${repo}`, wc]);
+    await writeFile(join(wc, 'readme.txt'), 'hello\n');
+    await run(['svn', 'add', 'readme.txt'], wc);
+    await run(['svn', 'commit', '-m', 'init readme'], wc);
+    await writeFile(join(wc, 'readme.txt'), 'hello world\n');
+    await run(['svn', 'commit', '-m', 'mixed revision commit'], wc);
+
+    const svn = new CliSvnClient(new CommandRunner());
+    const revisions = await svn.getLog(wc, { limit: 100 });
+    expect(revisions[0]?.message).toContain('mixed revision commit');
+  }, 15000);
+});

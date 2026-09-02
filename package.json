@@ -1,0 +1,26 @@
+{
+  "name": "svn-gpuix",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/main.tsx",
+    "dev:changes": "SVN_GPUIX_PREVIEW=changes bun --hot src/main.tsx",
+    "dev:history": "SVN_GPUIX_PREVIEW=history bun --hot src/main.tsx",
+    "dev:welcome": "SVN_GPUIX_PREVIEW=welcome bun --hot src/main.tsx",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "build": "bun build --compile src/main.tsx --outfile dist/revision"
+  },
+  "dependencies": {
+    "@gpuix/native": "0.7.0",
+    "@gpuix/react": "0.7.0",
+    "fast-xml-parser": "^5.11.1",
+    "react": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.0",
+    "@types/react": "^19.2.18",
+    "typescript": "5.8.3"
+  }
+}

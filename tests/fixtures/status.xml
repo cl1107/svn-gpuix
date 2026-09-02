@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<status>
+<target
+   path=".">
+<entry
+   path="src/App.ts">
+<wc-status
+   props="none"
+   item="modified"
+   revision="12">
+<commit
+   revision="12">
+<author>dev</author>
+<date>2026-01-01T00:00:00.000000Z</date>
+</commit>
+</wc-status>
+</entry>
+<entry
+   path="src/new.ts">
+<wc-status
+   props="none"
+   item="added"
+   revision="12">
+</wc-status>
+</entry>
+<entry
+   path="gone.txt">
+<wc-status
+   props="none"
+   item="deleted"
+   revision="11">
+</wc-status>
+</entry>
+<entry
+   path="scratch.txt">
+<wc-status
+   item="unversioned"
+   props="none">
+</wc-status>
+</entry>
+<entry
+   path="missing.txt">
+<wc-status
+   item="missing"
+   props="none"
+   revision="12">
+</wc-status>
+</entry>
+<entry
+   path="conflict.txt">
+<wc-status
+   item="conflicted"
+   props="none"
+   revision="12">
+</wc-status>
+</entry>
+<entry
+   path="ignored.log">
+<wc-status
+   item="ignored"
+   props="none">
+</wc-status>
+</entry>
+<entry
+   path="vendor">
+<wc-status
+   item="external"
+   props="none">
+</wc-status>
+</entry>
+<entry
+   path="clean.txt">
+<wc-status
+   item="normal"
+   props="none"
+   revision="12">
+</wc-status>
+</entry>
+<entry
+   path="props-only.txt">
+<wc-status
+   item="normal"
+   props="modified"
+   revision="12">
+</wc-status>
+</entry>
+</target>
+</status>

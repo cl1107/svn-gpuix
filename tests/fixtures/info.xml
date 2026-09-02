@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<info>
+<entry
+   kind="dir"
+   path="/tmp/svn-gpuix-info-wc"
+   revision="12">
+<url>file:///tmp/svn-gpuix-info-fixture/trunk</url>
+<relative-url>^/trunk</relative-url>
+<repository>
+<root>file:///tmp/svn-gpuix-info-fixture</root>
+<uuid>2dd7bbe8-5c5c-422b-b92f-38b779b37533</uuid>
+</repository>
+<wc-info>
+<wcroot-abspath>/tmp/svn-gpuix-info-wc</wcroot-abspath>
+<schedule>normal</schedule>
+<depth>infinity</depth>
+</wc-info>
+<commit
+   revision="12">
+<date>2026-09-02T07:52:21.272806Z</date>
+</commit>
+</entry>
+</info>

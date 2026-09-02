@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<log>
+<logentry
+   revision="12">
+<author>alice</author>
+<date>2026-09-01T12:00:00.123456Z</date>
+<paths>
+<path
+   text-mods="true"
+   kind="file"
+   action="M">/trunk/src/App.ts</path>
+<path
+   kind="file"
+   copyfrom-path="/trunk/old.ts"
+   copyfrom-rev="10"
+   action="A">/trunk/new.ts</path>
+<path
+   kind="file"
+   action="D">/trunk/gone.ts</path>
+<path
+   kind="file"
+   action="R">/trunk/replaced.ts</path>
+</paths>
+<msg>Fix user service
+second line</msg>
+</logentry>
+<logentry
+   revision="11">
+<author>张三</author>
+<date>2026-08-30T08:00:00.000000Z</date>
+<paths>
+<path
+   kind="file"
+   action="M">/trunk/README.md</path>
+</paths>
+<msg></msg>
+</logentry>
+</log>
