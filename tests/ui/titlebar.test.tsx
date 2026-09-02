@@ -70,6 +70,26 @@ describe('Titlebar', () => {
     }
   });
 
+  test('Titlebar 三档外观切换', () => {
+    if (!hasNativeTestRenderer) return;
+    const { render, renderer, unmount } = createTestRoot({ width: 1440, height: 960 });
+    try {
+      let last: string | undefined;
+      render(
+        <Titlebar
+          canOpen
+          onOpenWorkingCopy={() => {}}
+        />,
+      );
+      renderer.flush();
+      expect(renderer.findByTestId('titlebar-appearance-light')).toBeTruthy();
+      expect(renderer.findByTestId('titlebar-appearance-dark')).toBeTruthy();
+      expect(renderer.findByTestId('titlebar-appearance-system')).toBeTruthy();
+    } finally {
+      unmount();
+    }
+  });
+
   test('取消系统文件夹选择器不会崩溃，仍留在 Welcome', async () => {
     if (!hasNativeTestRenderer) return;
     const { render, renderer, unmount } = createTestRoot({ width: 1440, height: 960 });
@@ -107,10 +127,13 @@ describe('Titlebar', () => {
             },
             settings: {
               async load() {
-                return { version: 1 as const, recentWorkingCopies: [] };
+                return { version: 1 as const, recentWorkingCopies: [], appearance: 'system' as const };
               },
               async addRecent() {
-                return { version: 1 as const, recentWorkingCopies: [] };
+                return { version: 1 as const, recentWorkingCopies: [], appearance: 'system' as const };
+              },
+              async setAppearance(appearance: 'light' | 'dark' | 'system') {
+                return { version: 1 as const, recentWorkingCopies: [], appearance };
               },
             } as never,
             operations: new OperationManager(),

@@ -1,5 +1,6 @@
+import { useTheme } from '../../app/ThemeContext';
 import type { ReactNode } from 'react';
-import { font, theme } from '../../app/theme';
+import { font } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import type { AppError } from '../../domain/error';
@@ -27,6 +28,8 @@ export function CheckoutDialog({
   onCancel: () => void;
   onCheckout: () => void;
 }) {
+
+  const theme = useTheme();
   const canCheckout = url.trim().length > 0 && destination.trim().length > 0 && !busy;
 
   return (
@@ -104,6 +107,7 @@ export function CheckoutDialog({
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
+  const theme = useTheme();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <text style={{ color: theme.textMuted, fontSize: 11, fontFamily: font.ui }}>{label}</text>
