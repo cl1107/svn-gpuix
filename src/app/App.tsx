@@ -319,12 +319,13 @@ function AppShell({
         onWelcomeScreen={!preview && repository ? closeWorkingCopy : undefined}
       />
       {preview ? (
-        <RepositoryScreen initialPage={preview} svnVersion={svnVersion} />
+        <RepositoryScreen initialPage={preview} svnVersion={svnVersion} opener={services.opener} />
       ) : repository ? (
         <RepositoryScreen
           repository={repository}
           svn={services.svn}
           operations={services.operations}
+          opener={services.opener}
           workingCopyName={basename(repository.rootPath) || repository.rootPath}
           workingCopyPath={displayPath(repository.rootPath, homedir())}
           revision={repository.revision}

@@ -17,6 +17,7 @@ import {
 } from '../../application/mutateWorkingCopy';
 import type { OperationManager } from '../../application/operationManager';
 import { refreshWorkingCopy, type WorkingCopyReader } from '../../application/refreshRepository';
+import type { PathOpener } from '../../services/platform/pathOpener';
 import { Dialog } from '../../components/Dialog';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import {
@@ -71,6 +72,8 @@ export function RepositoryScreen({
   repository,
   svn,
   operations,
+  opener,
+  onShowInFinder,
   initialCommitMessage,
   recents,
   noticeError,
@@ -84,6 +87,8 @@ export function RepositoryScreen({
   repository?: Repository;
   svn?: RepositorySvn;
   operations?: OperationManager;
+  opener?: PathOpener;
+  onShowInFinder?: () => void;
   initialCommitMessage?: string;
   recents?: RecentItem[];
   noticeError?: AppError | null;
@@ -462,6 +467,19 @@ export function RepositoryScreen({
         }}
         onRevertSelected={() => requestConfirm('revert', revertable())}
         onDeleteSelected={() => requestConfirm('delete', deletable())}
+        onShowInFinder={
+          onShowInFinder
+            ? onShowInFinder
+            : opener && (rootPath || workingCopyPath)
+              ? () => {
+                  const target = rootPath || workingCopyPath;
+                  void opener.openPath(target).catch((error) => {
+                    console.error('Failed to open working copy in Finder', error);
+                  });
+                }
+              : undefined
+        }
+        opener={opener}
         recents={recents}
         currentPath={rootPath}
         onSwitchWorkingCopy={
