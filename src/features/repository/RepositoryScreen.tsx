@@ -54,6 +54,7 @@ import { HistoryView } from '../history/HistoryView';
 import type { RecentItem } from '../welcome/WelcomeScreen';
 import type { RepositoryPage } from '../../domain/repositoryPage';
 import { Sidebar } from './Sidebar';
+import { WorkingCopyView } from './WorkingCopyView';
 
 export type RepositorySvn = WorkingCopyReader &
   DiffReader &
@@ -102,7 +103,16 @@ export function RepositoryScreen({
           }
         : {
             page: initialPage,
-            repository,
+            repository:
+              initialPage === 'working-copy'
+                ? {
+                    rootPath: workingCopyPath,
+                    repositoryUrl: 'https://svn.example.com/repos/frontend-web/trunk',
+                    repositoryRoot: 'https://svn.example.com/repos/frontend-web',
+                    uuid: 'fixture-repository-uuid',
+                    revision,
+                  }
+                : undefined,
             changes: fixtureChanges,
             checkedPaths: fixtureCheckedPaths,
             selectedPath: fixtureChanges[0]?.path ?? null,
@@ -366,12 +376,38 @@ export function RepositoryScreen({
     );
   };
 
+  const runUpdate = () => {
+    if (!rootPath || !svn || !operations) return;
+    void runMutation('update', async () => {
+      let output = '';
+      await updateWorkingCopyRoot({
+        rootPath,
+        svn: svn as WorkingCopyMutator,
+        operations,
+        onStdout: (chunk) => {
+          output += chunk;
+          store.getState().setOperationLine(lastOutputLine(output));
+        },
+      });
+    });
+  };
+
   const runCommitRef = useRef(runCommit);
   runCommitRef.current = runCommit;
+  const runRefreshRef = useRef(runRefresh);
+  runRefreshRef.current = runRefresh;
+  const runHistoryRefreshRef = useRef(runHistoryRefresh);
+  runHistoryRefreshRef.current = runHistoryRefresh;
+  const pageRef = useRef(page);
+  pageRef.current = page;
   useEffect(() => {
     return addShortcutListener((action) => {
       if (action === 'close-dialog') setConfirm(null);
       if (action === 'commit') runCommitRef.current();
+      if (action === 'refresh') {
+        if (pageRef.current === 'history') void runHistoryRefreshRef.current();
+        else void runRefreshRef.current();
+      }
     });
   }, []);
 
@@ -408,21 +444,7 @@ export function RepositoryScreen({
         revision={shownRevision}
         syncLabel={syncLabel}
         svnVersion={svnVersion}
-        onUpdate={() => {
-          if (!rootPath || !svn || !operations) return;
-          void runMutation('update', async () => {
-            let output = '';
-            await updateWorkingCopyRoot({
-              rootPath,
-              svn: svn as WorkingCopyMutator,
-              operations,
-              onStdout: (chunk) => {
-                output += chunk;
-                store.getState().setOperationLine(lastOutputLine(output));
-              },
-            });
-          });
-        }}
+        onUpdate={runUpdate}
         onAddUnversioned={() => {
           const targets = addable();
           if (!rootPath || !svn || !operations || targets.length === 0) return;
@@ -466,11 +488,13 @@ export function RepositoryScreen({
       {page === 'history' ? (
         <HistoryView onRefresh={() => void runHistoryRefresh()} />
       ) : page === 'working-copy' ? (
-        <div style={{ flexGrow: 1, padding: 24 }}>
-          <text style={{ color: theme.textMuted, fontSize: 13, fontFamily: font.ui }}>
-            Working Copy details coming in a later phase.
-          </text>
-        </div>
+        <WorkingCopyView
+          workingCopyName={workingCopyName}
+          workingCopyPath={workingCopyPath}
+          svnVersion={svnVersion}
+          onRefresh={() => void runRefresh()}
+          onUpdate={runUpdate}
+        />
       ) : (
         <>
           <ChangesPanel

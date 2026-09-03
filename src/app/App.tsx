@@ -54,7 +54,7 @@ export function App({
   services = defaultServices,
   initialAppearance,
 }: {
-  preview?: 'changes' | 'history';
+  preview?: 'changes' | 'history' | 'working-copy';
   services?: AppServices;
   initialAppearance?: InitialAppearance;
 }) {
@@ -145,7 +145,7 @@ function AppShell({
   preview,
   services,
 }: {
-  preview?: 'changes' | 'history';
+  preview?: 'changes' | 'history' | 'working-copy';
   services: AppServices;
 }) {
   const theme = useTheme();

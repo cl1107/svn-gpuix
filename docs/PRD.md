@@ -238,10 +238,10 @@ Master / Detail
 
 - 左侧为 traffic-light window controls；
 - 展示产品名称 `Revision`；
-- 不承载 Refresh / Update / History 等业务工具栏操作。
+- 允许放置少量**应用级**入口：`Open working copy`、`Welcome screen` 与 Appearance（Light / Dark / System）；
+- 不承载当前 Working Copy 的 Refresh / Update / History 等仓库级业务操作。
 
-业务操作放在其对应的内容区域内，减少顶部工具栏密度。
-
+仓库级操作继续放在 Sidebar 或对应内容 Pane 内。Titlebar 只承担应用 chrome 与跨 Working Copy 的入口，避免与页面级操作重复。
 ### 6.2 Sidebar
 
 Working Copy 页面固定显示约 **238px** 宽的 Sidebar。
@@ -1008,11 +1008,29 @@ Up to date
 
 ### 23.3 Detail
 
-Repository URL 等更完整信息可在 Working Copy 页面或 History 的 Revision Info 中展示。
+Sidebar 只保留高频摘要；更完整的信息进入 `Working Copy` 页面。
 
-窗口最上方 Titlebar 仅作为应用级 chrome，默认不再承担 Working Copy Name / Revision / Refresh / Update / History 等业务信息。
----
+Working Copy 页面展示：
 
+```text
+Working Copy
+- Name
+- Local Path
+
+Repository
+- Repository URL
+- Repository Root
+- Repository UUID
+
+Status
+- Revision
+- Local change count / status summary
+- SVN CLI version
+```
+
+页面提供 `Refresh` 与 `Update`，二者复用 Changes 页相同的 repository refresh / mutation 流程，不维护第二份 working-copy 状态。
+
+该页面是信息概览，不扩展成 Repository Browser、branch/tag 管理或服务器端目录浏览器。
 # 24. Welcome Screen
 
 没有打开 Working Copy 时，不显示 Working Copy Sidebar。

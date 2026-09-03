@@ -1,6 +1,6 @@
 import type { EventPayload, NativeRenderer } from '@gpuix/react';
 
-export type ShortcutAction = 'open-working-copy' | 'checkout' | 'commit' | 'close-dialog';
+export type ShortcutAction = 'open-working-copy' | 'checkout' | 'refresh' | 'commit' | 'close-dialog';
 
 type ShortcutListener = (action: ShortcutAction) => void;
 
@@ -27,6 +27,7 @@ export function shortcutFromKeyEvent(event: Pick<EventPayload, 'key' | 'modifier
   if (modifiers.ctrl || modifiers.alt) return null;
   if (key === 'o' && modifiers.shift) return 'checkout';
   if (key === 'o') return 'open-working-copy';
+  if (key === 'r' && !modifiers.shift) return 'refresh';
   if (key === 'enter' && !modifiers.shift) return 'commit';
   return null;
 }

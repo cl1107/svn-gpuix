@@ -20,6 +20,15 @@ describe('shortcutFromKeyEvent', () => {
     ).toBe('checkout');
   });
 
+  test('Cmd+R 刷新当前页面', () => {
+    expect(
+      shortcutFromKeyEvent({
+        key: 'r',
+        modifiers: { cmd: true, shift: false, ctrl: false, alt: false },
+      }),
+    ).toBe('refresh');
+  });
+
   test('Cmd+Enter 提交', () => {
     expect(
       shortcutFromKeyEvent({
