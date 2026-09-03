@@ -37,6 +37,7 @@ import type { DiffResult } from '../../domain/diff';
 import type { AppError } from '../../domain/error';
 import { canCommit, lastOutputLine, type MutationKind } from '../../domain/operation';
 import type { Repository } from '../../domain/repository';
+import { calculateBehind, composeSyncLabel } from '../../domain/sync';
 import { CommandError } from '../../services/svn/commandRunner';
 import { RepositoryStoreProvider } from '../../store/RepositoryStoreContext';
 import { createRepositoryStore } from '../../store/repositoryStore';
@@ -46,6 +47,7 @@ import {
   selectMutating,
   selectOperationLine,
   selectPage,
+  selectRemoteRevision,
   selectRepository,
   selectSelectedPath,
 } from '../../store/selectors';
@@ -135,6 +137,7 @@ export function RepositoryScreen({
   const selectedPath = useStore(store, selectSelectedPath);
   const mutating = useStore(store, selectMutating);
   const operationLine = useStore(store, selectOperationLine);
+  const remoteRevision = useStore(store, selectRemoteRevision);
 
   const [statusGeneration, setStatusGeneration] = useState(0);
   const [diffView, setDiffView] = useState<DiffView>({ state: 'idle' });
@@ -280,12 +283,11 @@ export function RepositoryScreen({
 
   const shownRevision = liveRepo?.revision ?? revision;
   const busy = mutating !== null;
+  const behind = calculateBehind(shownRevision, remoteRevision);
   const syncLabel = mutating === 'update'
     ? operationLine || 'Updating…'
     : live
-      ? changes.length === 0
-        ? 'Up to date'
-        : `${changes.length} local ${changes.length === 1 ? 'change' : 'changes'}`
+      ? composeSyncLabel({ localCount: changes.length, behind })
       : 'Up to date';
 
   const committablePaths = changes
@@ -448,6 +450,7 @@ export function RepositoryScreen({
         workingCopyPath={workingCopyPath}
         revision={shownRevision}
         syncLabel={syncLabel}
+        behind={behind}
         svnVersion={svnVersion}
         onUpdate={runUpdate}
         onAddUnversioned={() => {

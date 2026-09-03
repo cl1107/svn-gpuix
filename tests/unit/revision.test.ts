@@ -24,8 +24,27 @@ const revisions: SvnRevision[] = [
 ];
 
 describe('revision helpers', () => {
-  test('formatRevisionDate 用 UTC 日期时间', () => {
-    expect(formatRevisionDate('2026-09-01T23:18:00.000Z')).toBe('2026-09-01 23:18');
+  test('formatRevisionDate 在 UTC 与 +08 时区下格式化结果不同', () => {
+    const instant = '2026-09-01T23:18:00.000Z';
+    const inUtc = formatRevisionDate(instant, 'UTC');
+    const inShanghai = formatRevisionDate(instant, 'Asia/Shanghai');
+    expect(inUtc).toBe('2026-09-01 23:18');
+    expect(inShanghai).toBe('2026-09-02 07:18');
+    expect(inUtc).not.toBe(inShanghai);
+  });
+
+  test('formatRevisionDate 缺省 timeZone 时使用系统本地时区', () => {
+    const instant = '2026-09-01T23:18:00.000Z';
+    const osZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    expect(formatRevisionDate(instant)).toBe(formatRevisionDate(instant, osZone));
+  });
+
+  test('formatRevisionDate 保留午夜无 T 的日期格式，有 T 则保留时间', () => {
+    expect(formatRevisionDate('2026-09-01', 'UTC')).toBe('2026-09-01');
+    expect(formatRevisionDate('2026-09-01T00:00:00.000Z', 'UTC')).toBe('2026-09-01 00:00');
+    expect(formatRevisionDate('')).toBe('');
+    expect(formatRevisionDate(undefined)).toBe('');
+    expect(formatRevisionDate('invalid-date')).toBe('invalid-date');
   });
 
   test('authorInitial 取首字母', () => {

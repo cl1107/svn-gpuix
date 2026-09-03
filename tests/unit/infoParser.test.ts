@@ -37,3 +37,58 @@ describe('parseInfoXml', () => {
     expect(() => parseInfoXml('<not-info />', '/tmp')).toThrow(/missing <info>/);
   });
 });
+
+describe('remote info & parseRemoteRevision', () => {
+  test('INFO_HEAD_ARGV 与 REMOTE_INFO_ARGV 符合 remote HEAD 查询契约', async () => {
+    const { INFO_HEAD_ARGV, REMOTE_INFO_ARGV } = await import('../../src/services/svn/info');
+    expect(INFO_HEAD_ARGV).toEqual(['svn', 'info', '--xml', '-r', 'HEAD', '--non-interactive']);
+    expect(REMOTE_INFO_ARGV).toEqual(INFO_HEAD_ARGV);
+  });
+
+  test('从 remote svn info XML 解析 HEAD revision', () => {
+    const { parseRemoteRevision } = require('../../src/services/svn/parsers/infoParser');
+    const xml = `<?xml version="1.0"?>
+<info>
+<entry kind="dir" path="repo" revision="42">
+<url>file:///repo</url>
+<repository>
+<root>file:///repo</root>
+</repository>
+<commit revision="42">
+<author>alice</author>
+</commit>
+</entry>
+</info>`;
+    expect(parseRemoteRevision(xml)).toBe(42);
+  });
+
+  test('entry @_revision 缺失时可回退到 commit revision', () => {
+    const { parseRemoteRevision } = require('../../src/services/svn/parsers/infoParser');
+    const xml = `<?xml version="1.0"?>
+<info>
+<entry kind="dir" path="repo">
+<url>file:///repo</url>
+<commit revision="18">
+<author>bob</author>
+</commit>
+</entry>
+</info>`;
+    expect(parseRemoteRevision(xml)).toBe(18);
+  });
+
+  test('缺少 revision 时抛错', () => {
+    const { parseRemoteRevision } = require('../../src/services/svn/parsers/infoParser');
+    const xml = `<?xml version="1.0"?>
+<info>
+<entry kind="dir" path="repo">
+<url>file:///repo</url>
+</entry>
+</info>`;
+    expect(() => parseRemoteRevision(xml)).toThrow(/missing revision/);
+  });
+
+  test('无效 XML 抛错', () => {
+    const { parseRemoteRevision } = require('../../src/services/svn/parsers/infoParser');
+    expect(() => parseRemoteRevision('<not-info />')).toThrow(/missing <info>/);
+  });
+});

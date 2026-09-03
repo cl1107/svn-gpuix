@@ -9,7 +9,7 @@ import { CommandRunner } from './commandRunner';
 import { commitWorkingCopy } from './commit';
 import { deleteWorkingCopyPaths } from './delete';
 import { readWorkingCopyDiff } from './diff';
-import { readRepositoryInfo } from './info';
+import { readRepositoryInfo, readRemoteHeadRevision } from './info';
 import { revertWorkingCopyPaths } from './revert';
 import { readRevisionLog } from './log';
 import { readWorkingCopyStatus } from './status';
@@ -28,6 +28,14 @@ export class CliSvnClient {
 
   async validateWorkingCopy(path: string, signal?: AbortSignal): Promise<Repository> {
     return readRepositoryInfo(this.runner, path, signal);
+  }
+
+  async getRemoteRevision(path: string, signal?: AbortSignal): Promise<number> {
+    return readRemoteHeadRevision(this.runner, path, signal);
+  }
+
+  async getRemoteHeadRevision(path: string, signal?: AbortSignal): Promise<number> {
+    return readRemoteHeadRevision(this.runner, path, signal);
   }
 
   async getStatus(path: string, signal?: AbortSignal): Promise<WorkingCopyChange[]> {

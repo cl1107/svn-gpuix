@@ -62,4 +62,48 @@ describe('refreshWorkingCopy', () => {
     });
     expect(result.checkedPaths.has('scratch.txt')).toBe(true);
   });
+
+  test('并行获取 remoteRevision 成功时返回 remoteRevision', async () => {
+    const result = await refreshWorkingCopy({
+      rootPath: repo.rootPath,
+      previousChecked: new Set(),
+      previousPaths: new Set(),
+      previousSelected: null,
+      svn: {
+        async validateWorkingCopy() {
+          return repo;
+        },
+        async getStatus() {
+          return [];
+        },
+        async getRemoteRevision() {
+          return 14;
+        },
+      },
+    });
+    expect(result.repository.revision).toBe(9);
+    expect(result.remoteRevision).toBe(14);
+  });
+
+  test('remoteRevision 获取失败（离线/网络错误）时不抛错且 remoteRevision 为 undefined', async () => {
+    const result = await refreshWorkingCopy({
+      rootPath: repo.rootPath,
+      previousChecked: new Set(),
+      previousPaths: new Set(),
+      previousSelected: null,
+      svn: {
+        async validateWorkingCopy() {
+          return repo;
+        },
+        async getStatus() {
+          return [];
+        },
+        async getRemoteRevision() {
+          throw new Error('E170013: Unable to connect to a repository');
+        },
+      },
+    });
+    expect(result.repository.revision).toBe(9);
+    expect(result.remoteRevision).toBeUndefined();
+  });
 });
