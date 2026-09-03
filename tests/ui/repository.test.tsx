@@ -212,4 +212,78 @@ describe('Figma 主界面', () => {
       unmount();
     }
   });
+
+  test('wc-sync 在 remote revision 更高时显示 behind', async () => {
+    if (!hasNativeTestRenderer) return;
+    const { render, renderer, unmount } = createTestRoot({ width: 1440, height: 960 });
+    try {
+      render(
+        <RepositoryScreen
+          repository={liveRepo}
+          svn={{
+            async validateWorkingCopy() {
+              return liveRepo;
+            },
+            async getStatus() {
+              return liveChanges;
+            },
+            async getDiff() {
+              return { kind: 'text' as const, patch: '' };
+            },
+            async getRemoteRevision() {
+              return 6;
+            },
+          }}
+          workingCopyName="demo-wc"
+          workingCopyPath="~/demo-wc"
+          svnVersion="1.14.5"
+        />,
+      );
+      renderer.flush();
+      await waitFor(() => Boolean(renderer.findByTestId('wc-sync')));
+      renderer.flush();
+      expect(renderer.findByTestId('wc-sync')).toBeTruthy();
+      const texts = renderer.getAllText();
+      expect(texts).toContain('2 local changes · 2 behind');
+    } finally {
+      unmount();
+    }
+  });
+
+  test('wc-sync 无 local 变更且 remote revision 更高时显示 N behind', async () => {
+    if (!hasNativeTestRenderer) return;
+    const { render, renderer, unmount } = createTestRoot({ width: 1440, height: 960 });
+    try {
+      render(
+        <RepositoryScreen
+          repository={liveRepo}
+          svn={{
+            async validateWorkingCopy() {
+              return liveRepo;
+            },
+            async getStatus() {
+              return [];
+            },
+            async getDiff() {
+              return { kind: 'text' as const, patch: '' };
+            },
+            async getRemoteRevision() {
+              return 7;
+            },
+          }}
+          workingCopyName="demo-wc"
+          workingCopyPath="~/demo-wc"
+          svnVersion="1.14.5"
+        />,
+      );
+      renderer.flush();
+      await waitFor(() => Boolean(renderer.findByTestId('wc-sync')));
+      renderer.flush();
+      expect(renderer.findByTestId('wc-sync')).toBeTruthy();
+      const texts = renderer.getAllText();
+      expect(texts).toContain('3 behind');
+    } finally {
+      unmount();
+    }
+  });
 });

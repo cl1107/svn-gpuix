@@ -17,15 +17,32 @@ export interface SvnRevision {
 
 export const DEFAULT_LOG_LIMIT = 100;
 
-export function formatRevisionDate(iso?: string): string {
+export function formatRevisionDate(iso?: string, timeZone?: string): string {
   if (!iso) return '';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  const hours = String(date.getUTCHours()).padStart(2, '0');
-  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    ...(timeZone ? { timeZone } : {}),
+  });
+  const parts = formatter.formatToParts(date);
+  let year = '';
+  let month = '';
+  let day = '';
+  let hours = '';
+  let minutes = '';
+  for (const part of parts) {
+    if (part.type === 'year') year = part.value;
+    else if (part.type === 'month') month = part.value;
+    else if (part.type === 'day') day = part.value;
+    else if (part.type === 'hour') hours = part.value;
+    else if (part.type === 'minute') minutes = part.value;
+  }
   if (hours === '00' && minutes === '00' && !iso.includes('T')) return `${year}-${month}-${day}`;
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }

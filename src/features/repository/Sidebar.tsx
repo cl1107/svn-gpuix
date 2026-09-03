@@ -17,6 +17,7 @@ export function Sidebar({
   workingCopyPath,
   revision,
   syncLabel,
+  behind,
   svnVersion,
   onUpdate,
   onAddUnversioned,
@@ -32,6 +33,7 @@ export function Sidebar({
   workingCopyPath: string;
   revision: number;
   syncLabel: string;
+  behind?: number;
   svnVersion?: string;
   onUpdate: () => void;
   onAddUnversioned?: () => void;
@@ -51,6 +53,8 @@ export function Sidebar({
   const onNavigate = useRepositoryStore((state) => state.setPage);
   const mutating = mutatingKind !== null;
   const updating = mutatingKind === 'update';
+  const isBehind = (behind !== undefined && behind > 0) || syncLabel.includes('behind');
+  const syncColor = updating ? theme.textMuted : isBehind ? theme.warning : theme.success;
   const [menuOpen, setMenuOpen] = useState(false);
   const canSwitch = Boolean(onSwitchWorkingCopy) && (recents?.length ?? 0) > 0 && !mutating;
 
@@ -181,7 +185,7 @@ export function Sidebar({
             <text testId="wc-revision" style={{ color: theme.text, fontSize: 16, fontFamily: font.ui, fontWeight: 600 }}>
               {`r${revision}`}
             </text>
-            <text testId="wc-sync" style={{ color: theme.success, fontSize: 10, fontFamily: font.ui }}>
+            <text testId="wc-sync" style={{ color: syncColor, fontSize: 10, fontFamily: font.ui }}>
               {syncLabel}
             </text>
           </div>

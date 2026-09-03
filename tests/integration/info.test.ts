@@ -44,4 +44,26 @@ describe('svn info 集成', () => {
       }
     }
   });
+
+  test('file:// working copy 能查询 remote HEAD revision', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'svn-gpuix-remote-info-'));
+    const repo = join(dir, 'repo');
+    const wc = join(dir, 'wc');
+    await run(['svnadmin', 'create', repo]);
+    await run(['svn', 'checkout', `file://${repo}`, wc]);
+
+    const client = new CliSvnClient(new CommandRunner());
+    expect(await client.getRemoteRevision(wc)).toBe(0);
+
+    // 在仓库中直接提交两次创建目录，使得 HEAD revision 升至 2，而 wc 仍然留在 0
+    await run(['svn', 'mkdir', `file://${repo}/trunk`, '-m', 'commit 1']);
+    await run(['svn', 'mkdir', `file://${repo}/branches`, '-m', 'commit 2']);
+
+    const localInfo = await client.validateWorkingCopy(wc);
+    expect(localInfo.revision).toBe(0);
+
+    const remoteRev = await client.getRemoteRevision(wc);
+    expect(remoteRev).toBe(2);
+    expect(await client.getRemoteHeadRevision(wc)).toBe(2);
+  });
 });

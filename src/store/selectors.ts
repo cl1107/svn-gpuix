@@ -2,6 +2,7 @@ import type { RepositoryState } from './repositoryStore';
 
 export const selectPage = (state: RepositoryState) => state.page;
 export const selectRepository = (state: RepositoryState) => state.repository;
+export const selectRemoteRevision = (state: RepositoryState) => state.remoteRevision;
 export const selectChanges = (state: RepositoryState) => state.changes;
 export const selectCheckedPaths = (state: RepositoryState) => state.checkedPaths;
 export const selectSelectedPath = (state: RepositoryState) => state.selectedPath;
