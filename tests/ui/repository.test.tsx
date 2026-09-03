@@ -2,8 +2,12 @@ import { describe, expect, test } from 'bun:test';
 import { createTestRoot, hasNativeTestRenderer } from '@gpuix/react/testing';
 import { App } from '../../src/app/App';
 import { RepositoryScreen } from '../../src/features/repository/RepositoryScreen';
+import { Sidebar } from '../../src/features/repository/Sidebar';
 import type { WorkingCopyChange } from '../../src/domain/change';
 import type { Repository } from '../../src/domain/repository';
+import type { PathOpener } from '../../src/services/platform/pathOpener';
+import { RepositoryStoreProvider } from '../../src/store/RepositoryStoreContext';
+import { createRepositoryStore } from '../../src/store/repositoryStore';
 
 const liveRepo: Repository = {
   rootPath: '/tmp/demo-wc',
@@ -108,6 +112,102 @@ describe('Figma 主界面', () => {
       expect(renderer.findByTestId('history-view')).toBeTruthy();
       expect(renderer.getAllText()).toContain('History');
       expect(renderer.findByTestId('revision-18431')).toBeTruthy();
+    } finally {
+      unmount();
+    }
+  });
+
+  test('Sidebar Quick action: Show in Finder 存在且点击调用 opener 传入 working copy 绝对路径', async () => {
+    if (!hasNativeTestRenderer) return;
+    const { render, renderer, unmount } = createTestRoot({ width: 1440, height: 960 });
+    try {
+      const opened: string[] = [];
+      const mockOpener: PathOpener = {
+        async openPath(path: string) {
+          opened.push(path);
+        },
+      };
+
+      render(
+        <RepositoryScreen
+          repository={liveRepo}
+          svn={{
+            async validateWorkingCopy() {
+              return liveRepo;
+            },
+            async getStatus() {
+              return liveChanges;
+            },
+            async getDiff() {
+              return { kind: 'text' as const, patch: 'diff --git a/src/a.ts b/src/a.ts\n' };
+            },
+          }}
+          opener={mockOpener}
+          workingCopyName="demo-wc"
+          workingCopyPath="~/demo-wc"
+          svnVersion="1.14.5"
+        />,
+      );
+      renderer.flush();
+
+      const action = renderer.findByTestId('show-in-finder');
+      expect(action).toBeTruthy();
+      expect(renderer.getAllText()).toContain('Show in Finder');
+
+      const bounds = renderer.getElementBounds(action!.id);
+      expect(bounds).toBeTruthy();
+      const [x, y, w, h] = bounds as number[];
+      renderer.nativeSimulateClick(x + w / 2, y + h / 2);
+      renderer.flush();
+
+      expect(opened).toEqual(['/tmp/demo-wc']);
+    } finally {
+      unmount();
+    }
+  });
+
+  test('Sidebar Quick action: Show in Finder 在 SVN mutation 期间仍保持启用', async () => {
+    if (!hasNativeTestRenderer) return;
+    const { render, renderer, unmount } = createTestRoot({ width: 1440, height: 960 });
+    try {
+      const opened: string[] = [];
+      const mockOpener: PathOpener = {
+        async openPath(path: string) {
+          opened.push(path);
+        },
+      };
+
+      const store = createRepositoryStore({
+        changes: liveChanges,
+        repository: liveRepo,
+      });
+      store.getState().tryBeginMutation('update');
+
+      render(
+        <RepositoryStoreProvider store={store}>
+          <Sidebar
+            workingCopyName="demo-wc"
+            workingCopyPath="~/demo-wc"
+            currentPath="/tmp/demo-wc"
+            revision={4}
+            syncLabel="Updating…"
+            onUpdate={() => {}}
+            opener={mockOpener}
+          />
+        </RepositoryStoreProvider>,
+      );
+      renderer.flush();
+
+      const action = renderer.findByTestId('show-in-finder');
+      expect(action).toBeTruthy();
+
+      const bounds = renderer.getElementBounds(action!.id);
+      expect(bounds).toBeTruthy();
+      const [x, y, w, h] = bounds as number[];
+      renderer.nativeSimulateClick(x + w / 2, y + h / 2);
+      renderer.flush();
+
+      expect(opened).toEqual(['/tmp/demo-wc']);
     } finally {
       unmount();
     }

@@ -58,7 +58,7 @@ export function ErrorBanner({ error, testId }: { error: AppError; testId?: strin
             borderColor: theme.border,
           }}
         >
-          <text style={{ color: theme.textMuted, fontSize: 10, fontFamily: font.mono, whiteSpace: 'pre-wrap' }}>
+          <text style={{ color: theme.textMuted, fontSize: 10, fontFamily: font.mono, whiteSpace: 'normal' }}>
             {details}
           </text>
         </div>

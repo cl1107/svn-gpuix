@@ -1,5 +1,7 @@
 import { OperationManager } from '../application/operationManager';
 import { MacOSDirectoryPicker } from '../services/picker/macosDirectoryPicker';
+import { MacOSPathOpener } from '../services/platform/macosPathOpener';
+import type { PathOpener } from '../services/platform/pathOpener';
 import { defaultSettingsPath, SettingsRepository } from '../services/settings/settingsRepository';
 import { CliSvnClient } from '../services/svn/SvnClient';
 import { CommandRunner } from '../services/svn/commandRunner';
@@ -11,6 +13,7 @@ export interface AppServices {
   picker: DirectoryPicker;
   settings: SettingsRepository;
   operations: OperationManager;
+  opener?: PathOpener;
 }
 
 export function createAppServices(): AppServices {
@@ -21,5 +24,6 @@ export function createAppServices(): AppServices {
     picker: new MacOSDirectoryPicker(runner),
     settings: new SettingsRepository(defaultSettingsPath()),
     operations: new OperationManager(),
+    opener: new MacOSPathOpener(runner),
   };
 }
