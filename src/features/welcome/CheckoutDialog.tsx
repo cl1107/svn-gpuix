@@ -1,6 +1,6 @@
 import { useTheme } from '../../app/ThemeContext';
 import type { ReactNode } from 'react';
-import { font } from '../../app/theme';
+import { font, type ThemeTokens } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import type { AppError } from '../../domain/error';
@@ -30,6 +30,7 @@ export function CheckoutDialog({
 }) {
 
   const theme = useTheme();
+  const fieldStyle = createFieldStyle(theme);
   const canCheckout = url.trim().length > 0 && destination.trim().length > 0 && !busy;
 
   return (
@@ -41,7 +42,7 @@ export function CheckoutDialog({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(23, 28, 41, 0.28)',
+        backgroundColor: theme.overlayScrim,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -116,14 +117,16 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const fieldStyle = {
-  height: 36,
-  paddingLeft: 12,
-  paddingRight: 12,
-  borderRadius: 8,
-  borderWidth: 1,
-  borderColor: theme.border,
-  backgroundColor: theme.bg,
-  color: theme.text,
-  fontSize: 13,
-} as const;
+function createFieldStyle(theme: ThemeTokens) {
+  return {
+    height: 36,
+    paddingLeft: 12,
+    paddingRight: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.border,
+    backgroundColor: theme.bg,
+    color: theme.text,
+    fontSize: 13,
+  } as const;
+}

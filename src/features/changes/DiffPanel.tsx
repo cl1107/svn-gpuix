@@ -1,4 +1,4 @@
-import { useTheme } from '../../app/ThemeContext';
+import { useResolvedAppearance, useTheme } from '../../app/ThemeContext';
 import { Icon } from '../../app/icons';
 import { font } from '../../app/theme';
 import { Button } from '../../components/Button';
@@ -30,6 +30,7 @@ export function DiffPanel({
 }) {
 
   const theme = useTheme();
+  const resolvedAppearance = useResolvedAppearance();
   const result = view.state === 'ready' && view.path === change?.path ? view.result : null;
   const loading = view.state === 'loading' && view.path === change?.path;
   const error = view.state === 'error' && view.path === change?.path ? view.error : null;
@@ -108,7 +109,7 @@ export function DiffPanel({
           patch={patch}
           wordDiff
           scroll
-          theme={{ appearance: 'light' }}
+          theme={{ appearance: resolvedAppearance }}
           style={{ flexGrow: 1, minHeight: 0 }}
         />
       ) : (

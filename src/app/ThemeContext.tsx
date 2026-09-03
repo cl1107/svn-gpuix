@@ -37,11 +37,11 @@ export function useTheme(): ThemeTokens {
 export function useAppearance() {
   const value = useContext(AppearanceContext);
   if (!value) {
-    return {
-      preference: 'system' as const,
-      resolved: 'light' as const,
-      setPreference: (_next: AppearancePreference) => {},
-    };
+    throw new Error('useAppearance must be used within ThemeProvider');
   }
   return value;
+}
+
+export function useResolvedAppearance(): ResolvedAppearance {
+  return useContext(AppearanceContext)?.resolved ?? 'light';
 }

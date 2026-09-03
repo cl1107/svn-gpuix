@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { homedir } from 'node:os';
 import { basename } from 'node:path';
 import { stat } from 'node:fs/promises';
@@ -15,9 +15,9 @@ import type { Repository } from '../domain/repository';
 import { CheckoutDialog } from '../features/welcome/CheckoutDialog';
 import { detectSvn } from '../services/svn/detectSvn';
 import {
+  createMacOSSystemAppearanceService,
   parseAppearancePreference,
   resolveAppearance,
-  subscribeSystemAppearance,
   type AppearancePreference,
   type ResolvedAppearance,
 } from './appearance';
@@ -28,6 +28,11 @@ import { createAppServices, type AppServices } from './services';
 import { addShortcutListener } from './shortcuts';
 
 const defaultServices = createAppServices();
+
+export interface InitialAppearance {
+  preference: AppearancePreference;
+  systemAppearance: ResolvedAppearance;
+}
 
 async function pathExists(path: string): Promise<boolean> {
   try {
@@ -47,41 +52,90 @@ async function presentRecents(
 export function App({
   preview,
   services = defaultServices,
+  initialAppearance,
 }: {
   preview?: 'changes' | 'history';
   services?: AppServices;
+  initialAppearance?: InitialAppearance;
 }) {
-  const [preference, setPreferenceState] = useState<AppearancePreference>('system');
-  const [systemAppearance, setSystemAppearance] = useState<ResolvedAppearance>('light');
+  const appearanceService = useMemo(
+    () => createMacOSSystemAppearanceService(services.runner),
+    [services.runner],
+  );
+  const [appearance, setAppearance] = useState<InitialAppearance | null>(() => {
+    if (initialAppearance) return initialAppearance;
+    if (preview || process.env.SVN_GPUIX_PREVIEW) {
+      return { preference: 'light', systemAppearance: 'light' };
+    }
+    return null;
+  });
+  const appearanceRequestRef = useRef(0);
 
   useEffect(() => {
+    if (appearance) return;
+
     let cancelled = false;
-    services.settings.load().then((settings) => {
-      if (!cancelled) setPreferenceState(parseAppearancePreference(settings.appearance));
-    });
+    void (async () => {
+      const settings = await services.settings.load();
+      const preference = parseAppearancePreference(settings.appearance);
+      const systemAppearance =
+        preference === 'system' ? await appearanceService.get() : ('light' as const);
+      if (!cancelled) setAppearance({ preference, systemAppearance });
+    })();
+
     return () => {
       cancelled = true;
     };
-  }, [services]);
+  }, [appearance, appearanceService, services.settings]);
 
   useEffect(() => {
-    if (preference !== 'system') return;
-    return subscribeSystemAppearance(services.runner, setSystemAppearance);
-  }, [preference, services.runner]);
+    if (appearance?.preference !== 'system') return;
+
+    return appearanceService.subscribe((systemAppearance) => {
+      setAppearance((current) => {
+        if (!current || current.preference !== 'system' || current.systemAppearance === systemAppearance) {
+          return current;
+        }
+        return { ...current, systemAppearance };
+      });
+    });
+  }, [appearance?.preference, appearanceService]);
 
   const setPreference = useCallback(
     (next: AppearancePreference) => {
-      setPreferenceState(next);
-      void services.settings.setAppearance(next);
+      const requestId = ++appearanceRequestRef.current;
+
+      void services.settings.setAppearance(next).catch((error) => {
+        console.error('Failed to persist appearance preference', error);
+      });
+
+      if (next !== 'system') {
+        setAppearance((current) => (current ? { ...current, preference: next } : current));
+        return;
+      }
+
+      void appearanceService.get().then((systemAppearance) => {
+        if (requestId !== appearanceRequestRef.current) return;
+        setAppearance((current) =>
+          current ? { preference: 'system', systemAppearance } : current,
+        );
+      });
     },
-    [services],
+    [appearanceService, services.settings],
   );
 
-  const resolved = resolveAppearance(preference, systemAppearance);
+  if (!appearance) return null;
+
+  const resolved = resolveAppearance(appearance.preference, appearance.systemAppearance);
   const tokens = tokensFor(resolved);
 
   return (
-    <ThemeProvider tokens={tokens} preference={preference} resolved={resolved} setPreference={setPreference}>
+    <ThemeProvider
+      tokens={tokens}
+      preference={appearance.preference}
+      resolved={resolved}
+      setPreference={setPreference}
+    >
       <AppShell preview={preview} services={services} />
     </ThemeProvider>
   );

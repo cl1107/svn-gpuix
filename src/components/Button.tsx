@@ -33,7 +33,7 @@ export function Button({
   const metrics = sizeStyle[size];
   const backgroundColor = variant === 'danger' ? theme.danger : variant === 'primary' ? theme.accent : theme.panel;
   const hoverColor =
-    variant === 'danger' ? '#B91C1C' : variant === 'primary' ? theme.accentHover : theme.panelHover;
+    variant === 'danger' ? theme.dangerHover : variant === 'primary' ? theme.accentHover : theme.panelHover;
 
   return (
     <div

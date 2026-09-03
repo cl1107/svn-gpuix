@@ -20,6 +20,7 @@ export type ThemeTokens = {
   accentBadge: string;
   accentText: string;
   danger: string;
+  dangerHover: string;
   dangerBg: string;
   warning: string;
   success: string;
@@ -54,6 +55,7 @@ export const lightTheme: ThemeTokens = {
   accentBadge: '#D9E5FF',
   accentText: '#FFFFFF',
   danger: '#D13845',
+  dangerHover: '#B91C1C',
   dangerBg: '#FEF2F2',
   warning: '#D4781F',
   success: '#24945C',
@@ -81,13 +83,14 @@ export const darkTheme: ThemeTokens = {
   border: '#2E3644',
   text: '#E8ECF2',
   textMuted: '#9AA3B2',
-  textSubtle: '#6E7787',
+  textSubtle: '#7F899A',
   accent: '#5B82F6',
   accentHover: '#7A9AFF',
   accentSoft: '#1E2A4A',
   accentBadge: '#243868',
   accentText: '#FFFFFF',
   danger: '#E85A64',
+  dangerHover: '#F06A73',
   dangerBg: '#3A1D22',
   warning: '#E09A3A',
   success: '#3DCE7A',

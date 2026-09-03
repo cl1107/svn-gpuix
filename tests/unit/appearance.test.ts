@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { parseAppearancePreference, readSystemAppearance, resolveAppearance } from '../../src/app/appearance';
+import {
+  createMacOSSystemAppearanceService,
+  parseAppearancePreference,
+  readSystemAppearance,
+  resolveAppearance,
+} from '../../src/app/appearance';
 import { darkTheme, lightTheme, tokensFor } from '../../src/app/theme';
 import type { CommandRunner } from '../../src/services/svn/commandRunner';
 
@@ -17,7 +22,7 @@ describe('appearance', () => {
     expect(resolveAppearance('dark', 'light')).toBe('dark');
   });
 
-  test('resolveTheme 浅深 key 成对', () => {
+  test('浅深 token key 成对', () => {
     expect(Object.keys(tokensFor('light'))).toEqual(Object.keys(lightTheme));
     expect(Object.keys(tokensFor('dark'))).toEqual(Object.keys(darkTheme));
     expect(tokensFor('light').bg).toBe('#F8F9FB');
@@ -25,7 +30,7 @@ describe('appearance', () => {
   });
 });
 
-describe('readSystemAppearance', () => {
+describe('system appearance', () => {
   test('Dark stdout is dark; missing key is light; argv is defaults', async () => {
     const calls: string[][] = [];
     const darkRunner = {
@@ -43,5 +48,37 @@ describe('readSystemAppearance', () => {
       },
     } as unknown as CommandRunner;
     expect(await readSystemAppearance(lightRunner)).toBe('light');
+  });
+
+  test('polling 串行执行且 unsubscribe 后停止', async () => {
+    let calls = 0;
+    let active = 0;
+    let maxActive = 0;
+    const runner = {
+      async run() {
+        calls += 1;
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await Bun.sleep(3);
+        active -= 1;
+        return { exitCode: 0, stdout: 'Dark\n', stderr: '' };
+      },
+    } as unknown as CommandRunner;
+
+    const service = createMacOSSystemAppearanceService(runner, 2);
+    const seen: string[] = [];
+    const unsubscribe = service.subscribe((mode) => seen.push(mode));
+
+    for (let i = 0; i < 50 && seen.length < 2; i++) {
+      await Bun.sleep(2);
+    }
+
+    expect(seen.length).toBeGreaterThanOrEqual(2);
+    expect(maxActive).toBe(1);
+
+    unsubscribe();
+    const callsWhenStopped = calls;
+    await Bun.sleep(12);
+    expect(calls).toBe(callsWhenStopped);
   });
 });

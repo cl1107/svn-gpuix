@@ -6,6 +6,15 @@ export type ResolvedAppearance = ThemeMode;
 
 export { resolveAppearance } from './theme';
 
+export interface SystemAppearanceService {
+  get(): Promise<ResolvedAppearance>;
+  /**
+   * Observe future appearance changes. Call get() first when the current value
+   * is needed immediately.
+   */
+  subscribe(onChange: (mode: ResolvedAppearance) => void): () => void;
+}
+
 export function parseAppearancePreference(value: unknown): AppearancePreference {
   if (value === 'light' || value === 'dark' || value === 'system') return value;
   return 'system';
@@ -16,25 +25,39 @@ export async function readSystemAppearance(runner: CommandRunner): Promise<Resol
     const result = await runner.run({ argv: ['defaults', 'read', '-g', 'AppleInterfaceStyle'] });
     return result.stdout.trim() === 'Dark' ? 'dark' : 'light';
   } catch {
-    // Light mode omits AppleInterfaceStyle (nonzero). Missing binary also → light.
+    // Light mode omits AppleInterfaceStyle (nonzero). Missing defaults also falls back to light.
     return 'light';
   }
 }
 
-export function subscribeSystemAppearance(
+/**
+ * GPUIX 0.7 has no system-appearance event. Keep the macOS polling fallback
+ * behind this service so a future native event source can replace it without
+ * changing React state management.
+ */
+export function createMacOSSystemAppearanceService(
   runner: CommandRunner,
-  onChange: (mode: ResolvedAppearance) => void,
   intervalMs = 2000,
-): () => void {
-  let cancelled = false;
-  const tick = async () => {
-    const mode = await readSystemAppearance(runner);
-    if (!cancelled) onChange(mode);
-  };
-  void tick();
-  const id = setInterval(() => void tick(), intervalMs);
-  return () => {
-    cancelled = true;
-    clearInterval(id);
+): SystemAppearanceService {
+  return {
+    get: () => readSystemAppearance(runner),
+    subscribe(onChange) {
+      let cancelled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+
+      const poll = async () => {
+        const mode = await readSystemAppearance(runner);
+        if (cancelled) return;
+        onChange(mode);
+        timer = setTimeout(() => void poll(), intervalMs);
+      };
+
+      timer = setTimeout(() => void poll(), intervalMs);
+
+      return () => {
+        cancelled = true;
+        if (timer) clearTimeout(timer);
+      };
+    },
   };
 }
