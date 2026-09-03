@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { homedir } from 'node:os';
 import { basename } from 'node:path';
 import { stat } from 'node:fs/promises';
@@ -14,12 +14,25 @@ import { lastOutputLine } from '../domain/operation';
 import type { Repository } from '../domain/repository';
 import { CheckoutDialog } from '../features/welcome/CheckoutDialog';
 import { detectSvn } from '../services/svn/detectSvn';
+import {
+  createMacOSSystemAppearanceService,
+  parseAppearancePreference,
+  resolveAppearance,
+  type AppearancePreference,
+  type ResolvedAppearance,
+} from './appearance';
+import { ThemeProvider, useTheme } from './ThemeContext';
 import { Titlebar } from './Titlebar';
-import { theme } from './theme';
+import { tokensFor } from './theme';
 import { createAppServices, type AppServices } from './services';
 import { addShortcutListener } from './shortcuts';
 
 const defaultServices = createAppServices();
+
+export interface InitialAppearance {
+  preference: AppearancePreference;
+  systemAppearance: ResolvedAppearance;
+}
 
 async function pathExists(path: string): Promise<boolean> {
   try {
@@ -39,10 +52,103 @@ async function presentRecents(
 export function App({
   preview,
   services = defaultServices,
+  initialAppearance,
 }: {
   preview?: 'changes' | 'history';
   services?: AppServices;
+  initialAppearance?: InitialAppearance;
 }) {
+  const appearanceService = useMemo(
+    () => createMacOSSystemAppearanceService(services.runner),
+    [services.runner],
+  );
+  const [appearance, setAppearance] = useState<InitialAppearance | null>(() => {
+    if (initialAppearance) return initialAppearance;
+    if (preview || process.env.SVN_GPUIX_PREVIEW) {
+      return { preference: 'light', systemAppearance: 'light' };
+    }
+    return null;
+  });
+  const appearanceRequestRef = useRef(0);
+
+  useEffect(() => {
+    if (appearance) return;
+
+    let cancelled = false;
+    void (async () => {
+      const settings = await services.settings.load();
+      const preference = parseAppearancePreference(settings.appearance);
+      const systemAppearance =
+        preference === 'system' ? await appearanceService.get() : ('light' as const);
+      if (!cancelled) setAppearance({ preference, systemAppearance });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appearance, appearanceService, services.settings]);
+
+  useEffect(() => {
+    if (appearance?.preference !== 'system') return;
+
+    return appearanceService.subscribe((systemAppearance) => {
+      setAppearance((current) => {
+        if (!current || current.preference !== 'system' || current.systemAppearance === systemAppearance) {
+          return current;
+        }
+        return { ...current, systemAppearance };
+      });
+    });
+  }, [appearance?.preference, appearanceService]);
+
+  const setPreference = useCallback(
+    (next: AppearancePreference) => {
+      const requestId = ++appearanceRequestRef.current;
+
+      void services.settings.setAppearance(next).catch((error) => {
+        console.error('Failed to persist appearance preference', error);
+      });
+
+      if (next !== 'system') {
+        setAppearance((current) => (current ? { ...current, preference: next } : current));
+        return;
+      }
+
+      void appearanceService.get().then((systemAppearance) => {
+        if (requestId !== appearanceRequestRef.current) return;
+        setAppearance((current) =>
+          current ? { preference: 'system', systemAppearance } : current,
+        );
+      });
+    },
+    [appearanceService, services.settings],
+  );
+
+  if (!appearance) return null;
+
+  const resolved = resolveAppearance(appearance.preference, appearance.systemAppearance);
+  const tokens = tokensFor(resolved);
+
+  return (
+    <ThemeProvider
+      tokens={tokens}
+      preference={appearance.preference}
+      resolved={resolved}
+      setPreference={setPreference}
+    >
+      <AppShell preview={preview} services={services} />
+    </ThemeProvider>
+  );
+}
+
+function AppShell({
+  preview,
+  services,
+}: {
+  preview?: 'changes' | 'history';
+  services: AppServices;
+}) {
+  const theme = useTheme();
   const [svn, setSvn] = useState<SvnProbe>({ status: 'checking' });
   const [repository, setRepository] = useState<Repository | null>(null);
   const [recents, setRecents] = useState<RecentItem[]>([]);

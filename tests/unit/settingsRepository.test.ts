@@ -8,6 +8,12 @@ describe('parseSettings', () => {
   test('损坏或未知版本回退到默认', () => {
     expect(parseSettings(null).recentWorkingCopies).toEqual([]);
     expect(parseSettings({ version: 2, recentWorkingCopies: [] }).recentWorkingCopies).toEqual([]);
+    expect(parseSettings(null).appearance).toBe('system');
+  });
+
+  test('appearance 非法则 system，合法则保留', () => {
+    expect(parseSettings({ version: 1, appearance: 'dark' }).appearance).toBe('dark');
+    expect(parseSettings({ version: 1, appearance: 'nope' }).appearance).toBe('system');
   });
 });
 
@@ -30,5 +36,37 @@ describe('SettingsRepository', () => {
 
     const loaded = await repo.load();
     expect(loaded).toEqual(saved);
+  });
+
+  test('setAppearance 持久化且不影响 recents', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'svn-gpuix-settings-'));
+    const filePath = join(dir, 'settings.json');
+    const repo = new SettingsRepository(filePath);
+
+    await repo.rememberWorkingCopy('/wc/a', 1);
+    const saved = await repo.setAppearance('dark');
+
+    expect(saved.appearance).toBe('dark');
+    expect(saved.recentWorkingCopies.map((item) => item.path)).toEqual(['/wc/a']);
+    expect((await repo.load()).appearance).toBe('dark');
+  });
+
+  test('并发 appearance / recent mutation 串行化，不互相覆盖', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'svn-gpuix-settings-'));
+    const filePath = join(dir, 'settings.json');
+    const repo = new SettingsRepository(filePath);
+
+    await repo.rememberWorkingCopy('/wc/a', 1);
+
+    await Promise.all([
+      repo.setAppearance('dark'),
+      repo.rememberWorkingCopy('/wc/b', 2),
+      repo.setAppearance('light'),
+    ]);
+
+    const loaded = await repo.load();
+    expect(loaded.appearance).toBe('light');
+    expect(loaded.lastWorkingCopy).toBe('/wc/b');
+    expect(loaded.recentWorkingCopies.map((item) => item.path)).toEqual(['/wc/b', '/wc/a']);
   });
 });

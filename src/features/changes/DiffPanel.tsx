@@ -1,5 +1,6 @@
+import { useResolvedAppearance, useTheme } from '../../app/ThemeContext';
 import { Icon } from '../../app/icons';
-import { font, theme } from '../../app/theme';
+import { font } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { STATUS_LABEL, type WorkingCopyChange } from '../../domain/change';
@@ -27,6 +28,9 @@ export function DiffPanel({
   onRevert?: () => void;
   onDelete?: () => void;
 }) {
+
+  const theme = useTheme();
+  const resolvedAppearance = useResolvedAppearance();
   const result = view.state === 'ready' && view.path === change?.path ? view.result : null;
   const loading = view.state === 'loading' && view.path === change?.path;
   const error = view.state === 'error' && view.path === change?.path ? view.error : null;
@@ -105,7 +109,7 @@ export function DiffPanel({
           patch={patch}
           wordDiff
           scroll
-          theme={{ appearance: 'light' }}
+          theme={{ appearance: resolvedAppearance }}
           style={{ flexGrow: 1, minHeight: 0 }}
         />
       ) : (
@@ -203,6 +207,7 @@ function emptyMessage(input: {
 }
 
 function ChromeIcon() {
+  const theme = useTheme();
   return (
     <div
       style={{

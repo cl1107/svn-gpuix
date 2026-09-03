@@ -1,6 +1,7 @@
+import { useTheme } from '../../app/ThemeContext';
 import { useMemo, useState } from 'react';
 import { Icon } from '../../app/icons';
-import { font, layout, theme } from '../../app/theme';
+import { font, layout, type ThemeTokens } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import {
@@ -18,14 +19,18 @@ import {
 } from '../../store/selectors';
 import { useRepositoryStore } from '../../store/RepositoryStoreContext';
 
-const actionTone: Record<PathAction, { color: string; background: string }> = {
-  M: { color: theme.modified, background: theme.modifiedBg },
-  A: { color: theme.added, background: theme.addedBg },
-  D: { color: theme.deleted, background: theme.deletedBg },
-  R: { color: theme.replaced, background: theme.replacedBg },
-};
+function actionTone(theme: ThemeTokens): Record<PathAction, { color: string; background: string }> {
+  return {
+    M: { color: theme.modified, background: theme.modifiedBg },
+    A: { color: theme.added, background: theme.addedBg },
+    D: { color: theme.deleted, background: theme.deletedBg },
+    R: { color: theme.replaced, background: theme.replacedBg },
+  };
+}
 
 export function HistoryView({ onRefresh }: { onRefresh: () => void }) {
+
+  const theme = useTheme();
   const revisions = useRepositoryStore(selectHistory);
   const selectedRevision = useRepositoryStore(selectSelectedRevision);
   const historyLoading = useRepositoryStore(selectHistoryLoading);
@@ -242,7 +247,8 @@ export function HistoryView({ onRefresh }: { onRefresh: () => void }) {
 }
 
 function ActionBadge({ action }: { action: PathAction }) {
-  const tone = actionTone[action];
+  const theme = useTheme();
+  const tone = actionTone(theme)[action];
   return (
     <div
       style={{
@@ -262,6 +268,7 @@ function ActionBadge({ action }: { action: PathAction }) {
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
+  const theme = useTheme();
   return (
     <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
       <text style={{ color: theme.textMuted, fontSize: 12, fontFamily: font.ui, width: 88 }}>{label}</text>

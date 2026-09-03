@@ -1,4 +1,5 @@
-import { font, layout, theme } from '../../app/theme';
+import { useTheme } from '../../app/ThemeContext';
+import { font, layout } from '../../app/theme';
 import { Checkbox } from '../../components/Checkbox';
 import { StatusBadge } from '../../components/StatusBadge';
 import { STATUS_LABEL, type WorkingCopyChange } from '../../domain/change';
@@ -16,6 +17,8 @@ export function ChangeRow({
   onSelect: (path: string) => void;
   onToggle: (path: string) => void;
 }) {
+
+  const theme = useTheme();
   return (
     <div
       testId={`change-${change.path}`}

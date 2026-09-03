@@ -65,7 +65,7 @@ Infrastructure implements interfaces (SvnClient, CommandRunner, picker, settings
 - 长列表用 `<virtual-list>`；unified diff 用 `<diff patch={...} wordDiff>`，不要把 patch 拆成 React 行。
 - **禁止嵌套纵向滚动**。Changes 列表、Diff、History 列表、Revision Detail 是并列 pane，各自至多一个 scroller。
 - Dialog 用 `<anchored>`；破坏性确认时 outside click / Esc = 取消。
-- 主题 token 集中在 `src/app/theme.ts`。MVP 只做 Figma 浅色稿。
+- 主题 token 集中在 `src/app/theme.ts`。应用支持 Light / Dark / System；live UI 从 `ThemeProvider` 读取 token，GPUIX `<diff>` 的 appearance 必须跟随 resolved theme。
 - 测试：`createTestRoot` / `@gpuix/react/testing`；断言优先读 `testId` 文本，screenshot 做回归。
 
 ## 明确不做

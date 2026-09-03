@@ -1,12 +1,15 @@
-import { mkdir, rename } from 'node:fs/promises';
+import { mkdir, rename, unlink } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { upsertRecent, type RecentWorkingCopy } from '../../domain/repository';
+import { parseAppearancePreference, type AppearancePreference } from '../../app/appearance';
 
 export interface Settings {
   version: 1;
   recentWorkingCopies: RecentWorkingCopy[];
   lastWorkingCopy?: string;
+  appearance: AppearancePreference;
   window?: {
     width: number;
     height: number;
@@ -28,6 +31,7 @@ export function defaultSettings(): Settings {
   return {
     version: 1,
     recentWorkingCopies: [],
+    appearance: 'system',
   };
 }
 
@@ -41,6 +45,7 @@ export function parseSettings(raw: unknown): Settings {
   const settings: Settings = {
     version: 1,
     recentWorkingCopies: recents,
+    appearance: parseAppearancePreference(raw.appearance),
   };
 
   if (typeof raw.lastWorkingCopy === 'string' && raw.lastWorkingCopy.length > 0) {
@@ -63,9 +68,16 @@ export function defaultSettingsPath(): string {
 }
 
 export class SettingsRepository {
+  private writeQueue: Promise<void> = Promise.resolve();
+
   constructor(private readonly filePath: string) {}
 
   async load(): Promise<Settings> {
+    await this.writeQueue;
+    return this.readFromDisk();
+  }
+
+  private async readFromDisk(): Promise<Settings> {
     const file = Bun.file(this.filePath);
     if (!(await file.exists())) return defaultSettings();
     try {
@@ -77,20 +89,48 @@ export class SettingsRepository {
   }
 
   async save(settings: Settings): Promise<void> {
-    await mkdir(dirname(this.filePath), { recursive: true });
-    const tmpPath = `${this.filePath}.tmp`;
-    await Bun.write(tmpPath, `${JSON.stringify(settings, null, 2)}\n`);
-    await rename(tmpPath, this.filePath);
+    await this.enqueueWrite(() => this.writeAtomic(settings));
   }
 
-  async rememberWorkingCopy(path: string, lastOpenedAt = Date.now()): Promise<Settings> {
-    const current = await this.load();
-    const next: Settings = {
+  private async writeAtomic(settings: Settings): Promise<void> {
+    await mkdir(dirname(this.filePath), { recursive: true });
+    const tmpPath = `${this.filePath}.${randomUUID()}.tmp`;
+    try {
+      await Bun.write(tmpPath, `${JSON.stringify(settings, null, 2)}\n`);
+      await rename(tmpPath, this.filePath);
+    } catch (error) {
+      await unlink(tmpPath).catch(() => {});
+      throw error;
+    }
+  }
+
+  private enqueueWrite<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.writeQueue.then(operation);
+    this.writeQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
+  private mutate(mutator: (current: Settings) => Settings): Promise<Settings> {
+    return this.enqueueWrite(async () => {
+      const current = await this.readFromDisk();
+      const next = mutator(current);
+      await this.writeAtomic(next);
+      return next;
+    });
+  }
+
+  rememberWorkingCopy(path: string, lastOpenedAt = Date.now()): Promise<Settings> {
+    return this.mutate((current) => ({
       ...current,
       lastWorkingCopy: path,
       recentWorkingCopies: upsertRecent(current.recentWorkingCopies, path, lastOpenedAt),
-    };
-    await this.save(next);
-    return next;
+    }));
+  }
+
+  setAppearance(appearance: AppearancePreference): Promise<Settings> {
+    return this.mutate((current) => ({ ...current, appearance }));
   }
 }
