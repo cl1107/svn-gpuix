@@ -6,7 +6,7 @@ import { handleWindowKeyDown } from './app/shortcuts';
 import { layout } from './app/theme';
 
 const preview = process.env.SVN_GPUIX_PREVIEW;
-const previewPage = preview === 'history' ? 'history' : preview === 'changes' ? 'changes' : undefined;
+const previewPage = preview === 'history' ? 'history' : preview === 'changes' ? 'changes' : preview === 'working-copy' ? 'working-copy' : undefined;
 const services = createAppServices();
 
 let initialAppearance: InitialAppearance;

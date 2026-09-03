@@ -15,9 +15,9 @@ macOS ARM64 上的轻量 SVN GUI（产品名 **Revision**）。UI 是 GPUIX + Re
 | 视觉还原、间距、颜色、组件外观 | [Figma 设计稿](https://www.figma.com/design/9gTShL5ZhiPRUMSiOoNN2P/gpuix-SVN-Client-%E2%80%94-Modern-Desktop-UI?node-id=0-1) |
 | GPUIX API、元素、样式、测试 renderer、打包 | https://gpuix.dev/ （本地可 `curl -L https://gpuix.dev/docs.zip`） |
 
-**文档冲突时的优先级：** 视觉以 Figma 为准（浅色、自定义 Titlebar、Sidebar + List + Detail）；信息架构以 PRD 为准；SVN 命令与数据契约以 Spec 为准；代码放哪一层以 Architecture 为准。Spec §46 的 Dark tokens 已被 Figma 浅色稿覆盖。已知冲突记在 `tasks.md` 的「文档冲突」。
+**文档冲突时的优先级：** 视觉层级以 Figma 的 Light 稿为基准，信息架构以 PRD 为准；SVN 命令与数据契约以 Spec 为准；代码放哪一层以 Architecture 为准。应用支持 Light / Dark / System，Dark/System 是同一 token contract 的正式变体，不再把 Spec 理解成“只做 Dark”。阶段 9 已将主要历史冲突回写到 docs，剩余裁决记在 `tasks.md`。
 
-实现或改 UI 前用 Figma MCP（`https://mcp.figma.com/mcp`）拉当前节点的标注与截图。本会话若 MCP 未连上，对照 `docs/figma/` 缩略图与 PRD 布局数字，不要自行改成深色主题。
+实现或改 UI 前优先用 Figma MCP（`https://mcp.figma.com/mcp`）拉当前节点的标注与截图。若 MCP 不可用或触发账户额度限制，按 PRD 的布局数字、现有 theme/component contract 和仓库已有 screenshot 继续，不另起一套视觉语言。
 
 ## 每个任务怎么做
 

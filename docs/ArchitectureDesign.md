@@ -446,19 +446,43 @@ Mutation 发生时：
 
 # 14. Store Architecture
 
-Store 不应该复制大量 derived state。
+状态按生命周期分层，而不是强行放进一个全局 Store。
 
-Canonical State：
+App shell React state：
 
 ```text
+svn availability
+current repository
+recent working copies
+checkout dialog
+appearance
+open/switch error
+```
+
+Repository-scoped Zustand canonical state：
+
+```text
+page
 repository
 changes
 checkedPaths
 selectedPath
 commitMessage
 history
-operation
-error
+selectedRevision
+refresh / history loading
+mutation kind / output
+repository errors
+```
+
+RepositoryScreen transient request state：
+
+```text
+diff view
+AbortController
+requestId / generation
+diff cache
+confirmation dialog
 ```
 
 Derived：
@@ -466,15 +490,13 @@ Derived：
 ```text
 selectedCount
 selectedChange
-hasChanges
 canCommit
-committableChanges
+committable/addable/revertable/deletable paths
+sync label
+status summary
 ```
 
-通过 selector 计算。
-
----
-
+原则是按 owner / lifetime 放状态：只有多个页面真正共享且具有业务意义的数据才进入 Zustand；短生命周期请求控制对象不进入 Store。
 # 15. State Diagram
 
 Application：
@@ -858,70 +880,75 @@ GPUIX 升级时修改面尽量集中。
 
 # 29. UI Architecture
 
-主屏：
+打开 working copy 后使用稳定的 Repository shell：
 
 ```text
 RepositoryScreen
 │
-├── RepositoryToolbar
+├── Sidebar
 │
-├── Workspace
-│   ├── ChangesPanel
-│   └── DiffPanel
-│
-└── CommitPanel
+└── page content
+    ├── Changes
+    │   ├── ChangesPanel
+    │   │   ├── Changed Files
+    │   │   └── Commit Composer
+    │   └── DiffPanel
+    ├── History
+    │   └── HistoryView
+    │       ├── Revision List
+    │       └── Revision Detail
+    └── Working Copy
+        └── WorkingCopyView
+            ├── Local checkout
+            ├── Repository info
+            └── Local status
 ```
 
-保持：
+Changes / History 保持 `Sidebar + List + Detail` 的稳定信息架构；Working Copy 是同一 shell 内的 overview 页面。
 
-```text
-3 个主要视觉区域
-```
-
-不要增加复杂 nested panel。
-
----
-
+不要重新引入顶部 RepositoryToolbar，也不要把 Commit composer 变成跨窗口底栏。
 # 30. View Navigation
 
-MVP 只有：
+MVP 不使用 Router Library。
 
-```text
-Welcome
-Repository
-History
-```
-
-不用 Router Library。
-
-类型：
+顶层只区分：
 
 ```ts
-type View = { type: 'welcome' } | { type: 'repository' } | { type: 'history' };
+type AppView = 'welcome' | 'repository';
 ```
 
----
+Repository 内部导航：
 
+```ts
+type RepositoryPage =
+  | 'changes'
+  | 'history'
+  | 'working-copy';
+```
+
+Sidebar 只改变 repository-scoped `page`；不会卸载整个 App shell，也不会创建 History 顶层 route。
+
+打开 / checkout working copy 进入 repository；Welcome screen 则关闭当前 repository 回到 Welcome。
 # 31. History Architecture
 
-History 与 Changes 不同时出现。
+History 是 Repository shell 内的 page，而不是独立顶层 View：
 
 ```text
-Repository View
-     │
-     │ History
-     ▼
-History View
-     │
-     │ Back
-     ▼
-Repository View
+RepositoryScreen
+  Sidebar
+    Changes
+    History
+    Working Copy
+
+  page=history
+    HistoryView
+      Revision List
+      Revision Detail
 ```
 
-避免右侧 diff 与 history nested scroll 冲突。
+这样 Workspace switcher、SVN Update Card、Quick actions 与 Working Copy identity 保持稳定，不因查看 History 被拆成另一套导航。
 
----
-
+History 与 Changes 主工作区不会同时渲染，因此仍满足“避免 Diff 与 History nested vertical scroll 冲突”的原始目标。
 # 32. Testing Pyramid
 
 ```text

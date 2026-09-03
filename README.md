@@ -22,16 +22,18 @@ bun run dev
 
 Welcome 上点 **Choose folder…**（或 `Cmd+O`）打开已有 working copy。非法目录会留在 Welcome 并显示错误。最近打开的路径写在 `~/Library/Application Support/Revision/settings.json`，最多 10 条。
 
-对照 Figma 的 Changes / History 视觉稿（仍用 fixture 数据）：
+核心页面可用 fixture 数据直接预览：
 
 ```bash
 bun run dev:changes
 bun run dev:history
+bun run dev:working-copy
 ```
 
-其他：
+阶段 9 验收：
 
 ```bash
 bun run typecheck
 bun test
+bun run build
 ```

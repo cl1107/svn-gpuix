@@ -85,6 +85,39 @@ export function classifySvnError(input: {
     };
   }
 
+  if (/E155004|E155037|working copy[^\n]*locked|locked working copy/i.test(text)) {
+    return {
+      kind: 'working-copy-locked',
+      title: 'Working copy is locked.',
+      message: 'Another or interrupted SVN operation left this working copy locked. Run svn cleanup in Terminal, then retry.',
+      command: input.command,
+      stderr: input.stderr,
+      exitCode: input.exitCode,
+    };
+  }
+
+  if (/E170013|E670002|E731001|could not resolve hostname|connection refused|connection timed out|unable to connect|failed to connect|network connection/i.test(text)) {
+    return {
+      kind: 'network',
+      title: 'Could not reach SVN repository.',
+      message: 'Check the network connection and repository URL, then retry.',
+      command: input.command,
+      stderr: input.stderr,
+      exitCode: input.exitCode,
+    };
+  }
+
+  if (/E155015|E195020|remains? in conflict|conflict discovered|tree conflict|text conflict|property conflict/i.test(text)) {
+    return {
+      kind: 'conflict',
+      title: 'SVN conflict detected.',
+      message: 'Resolve the conflict with your SVN tooling, then refresh the working copy.',
+      command: input.command,
+      stderr: input.stderr,
+      exitCode: input.exitCode,
+    };
+  }
+
   const detail = input.stderr.trim() || input.message || 'The SVN command failed.';
   return {
     kind: 'command-failed',

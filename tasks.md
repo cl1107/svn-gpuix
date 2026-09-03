@@ -4,17 +4,18 @@
 
 产品名：Revision。平台：macOS ARM64。
 
-## 文档冲突（实现时按此裁决）
+## 文档与实现裁决
 
-PRD 已把主界面改成 `Sidebar + List + Detail`，Commit 嵌在 Changes Pane 底部。Spec §41 与 Architecture §29 仍写旧的「顶栏 + 底栏 Commit」。Spec §46 写 Dark theme；Figma 稿是浅色。
+阶段 9 已把主要历史冲突回写到 PRD / Spec / Architecture，以下作为实现准则：
 
-实现 UI 时：
+- 颜色、圆角、卡片、Titlebar、Welcome logo「R」、主界面信息层级以 Figma（https://www.figma.com/design/9gTShL5ZhiPRUMSiOoNN2P）和 PRD 为视觉基准。
+- Figma 的 Light 稿是视觉基线；应用实际支持 Light / Dark / System，三套模式共享 `theme.ts` token contract。
+- Titlebar 只放应用级 `Open working copy` / `Welcome screen` / Appearance；Refresh / Update / History 等 repository 级操作仍在内容区或 Sidebar。
+- History 与 Working Copy 都是 Repository shell 里的 Sidebar page，不是独立顶层路由。
+- Repository canonical state 使用 repository-scoped Zustand；App shell 与 transient diff request state 保留在各自 owner，不强行并入单一全局 Store。
+- SVN 命令、parser、安全边界和 OperationManager 规则仍以 Spec / Architecture 为准。
 
-- 颜色、圆角、卡片、Titlebar、Welcome logo「R」、主界面三栏跟 Figma（https://www.figma.com/design/9gTShL5ZhiPRUMSiOoNN2P）。
-- 窗口 chrome / Welcome / Sidebar / Changes / History 布局跟 PRD §6、§21、§24。
-- Titlebar 按用户要求放 `Open working copy` / `Welcome screen`（PRD §6.1 写不承载业务操作；这两项从 Sidebar workspace 菜单挪上来填空）。
-- History 是 Repository shell 里的 Sidebar 页面，不是独立顶层路由。Architecture §30 的 `View` 可保留 `welcome | repository`，repository 内再用 `page: 'changes' | 'history' | 'working-copy'`。
-- SVN 命令、parser、Store 字段仍跟 Spec。
+> 阶段 2–8 下方的「偏差」是对应阶段完成时的历史验收快照；若与本节冲突，以本节和当前 docs 为准。
 
 ## 阶段 0 — 代理文档
 
@@ -162,15 +163,28 @@ PRD 已把主界面改成 `Sidebar + List + Detail`，Commit 嵌在 Changes Pane
 
 ## 阶段 9 — Polish
 
-验收：PRD §32 DoD 全部勾上。
+验收：PRD §32 DoD 全部勾上；最终命令需在 macOS ARM64 + GPUIX native renderer 环境执行。
 
-- [ ] 快捷键补齐（Cmd+R、Esc）
-- [ ] 空态 / Error Banner（含 Show Details）
-- [ ] `classifySvnError`
-- [ ] 核心 parser 单测 + `file://` 集成测
-- [ ] 关键界面 screenshot
-- [ ] 至少一条 E2E happy path
-- [ ] 开发用 unsigned `bun build --compile`（不阻塞功能）
+- [x] 快捷键补齐（Cmd+R、Esc）
+- [x] 空态 / Error Banner（含折叠的 Show Details）
+- [x] `classifySvnError`：not-working-copy / auth / locked / network / conflict / fallback
+- [x] Working Copy 页面：Local checkout / Repository / Status 概览 + Refresh / Update
+- [x] 核心 parser 单测 + `file://` 集成测
+- [x] 关键界面 screenshot smoke：Welcome / Changes / History / Working Copy
+- [x] 至少一条 MVP vertical happy path：checkout → status → diff → commit → clean → history
+- [x] 开发用 unsigned `bun build --compile` 命令（`bun run build`）
+- [ ] macOS ARM64 本机最终验收：`bun run typecheck && bun test && bun run build`
+
+阶段 9 新增验收覆盖：
+
+- `tests/unit/shortcuts.test.ts`：Cmd+R。
+- `tests/unit/error.test.ts`：locked / network / conflict / fallback。
+- `tests/ui/errorBanner.test.tsx`：Show Details 折叠/展开。
+- `tests/ui/workingCopy.test.tsx`：Working Copy 信息与 status summary。
+- `tests/ui/screenshots.test.tsx`：核心页面 GPU screenshot smoke。
+- `tests/integration/happyPath.test.ts`：真实 `svnadmin` / `file://` vertical happy path。
+
+当前远程工具环境不能运行 macOS GPUIX native renderer，也未宣称上述最终命令已经通过；最后一项保留为本机验收门槛。
 
 ## 禁止插入的工作
 

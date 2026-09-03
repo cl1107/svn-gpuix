@@ -7,6 +7,7 @@
     "dev": "bun --hot src/main.tsx",
     "dev:changes": "SVN_GPUIX_PREVIEW=changes bun --hot src/main.tsx",
     "dev:history": "SVN_GPUIX_PREVIEW=history bun --hot src/main.tsx",
+    "dev:working-copy": "SVN_GPUIX_PREVIEW=working-copy bun --hot src/main.tsx",
     "dev:welcome": "SVN_GPUIX_PREVIEW=welcome bun --hot src/main.tsx",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
