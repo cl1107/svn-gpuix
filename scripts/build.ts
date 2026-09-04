@@ -8,6 +8,7 @@ const dist = path.join(root, 'dist');
 const binary = path.join(dist, 'revision');
 const appName = 'Revision';
 const appBundle = path.join(dist, `${appName}.app`);
+const sourceIcon = path.join(root, 'assets', 'app-icon.svg');
 const masterIcon = path.join(dist, 'app-icon.png');
 const iconset = path.join(dist, 'AppIcon.iconset');
 const icns = path.join(dist, 'AppIcon.icns');
@@ -23,6 +24,14 @@ function run(command: string, args: string[]): void {
 
   const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim();
   throw new Error(`${command} ${args.join(' ')} failed${detail ? `\n${detail}` : ''}`);
+}
+
+function tryRun(command: string, args: string[]): boolean {
+  return spawnSync(command, args, {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).status === 0;
 }
 
 async function compileBinary(): Promise<void> {
@@ -41,9 +50,33 @@ async function compileBinary(): Promise<void> {
   throw new Error('bun build --compile failed');
 }
 
-async function buildMacIcon(): Promise<void> {
-  run('swift', [path.join(root, 'scripts', 'render-app-icon.swift'), masterIcon]);
+async function renderMasterIcon(): Promise<void> {
+  const converted = tryRun('sips', [
+    '-s',
+    'format',
+    'png',
+    '--resampleHeightWidth',
+    '1024',
+    '1024',
+    sourceIcon,
+    '--out',
+    masterIcon,
+  ]);
+  if (converted) return;
 
+  // Some macOS versions do not expose SVG conversion through sips. Quick Look
+  // ships with macOS and can rasterize this flat, text-free SVG without adding
+  // a graphics dependency to the project.
+  const quickLookDir = path.join(dist, '.icon-quicklook');
+  await rm(quickLookDir, { recursive: true, force: true });
+  await mkdir(quickLookDir, { recursive: true });
+  run('qlmanage', ['-t', '-s', '1024', '-o', quickLookDir, sourceIcon]);
+  await copyFile(path.join(quickLookDir, `${path.basename(sourceIcon)}.png`), masterIcon);
+  await rm(quickLookDir, { recursive: true, force: true });
+}
+
+async function buildMacIcon(): Promise<void> {
+  await renderMasterIcon();
   await rm(iconset, { recursive: true, force: true });
   await mkdir(iconset, { recursive: true });
 
