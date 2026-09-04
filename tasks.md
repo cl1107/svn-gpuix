@@ -192,6 +192,18 @@
 
 当前远程工具环境不能运行 macOS GPUIX native renderer，也未宣称上述最终命令已经通过；最后一项保留为本机验收门槛。
 
+## 阶段 10 — History Revision Diff
+
+验收：选择 History revision 后显示该 revision 的完整 Unified Diff；快速切换不串台；二进制 revision 有明确空态。
+
+- [x] `svn diff --git --non-interactive -c REV -- .` + `RevisionDiffReader`
+- [x] Revision Detail 使用 GPUIX `<diff>` 展示完整 patch
+- [x] revision cache + AbortController + requestId
+- [x] 应用层、`file://` 集成和 History UI 回归测试
+- [x] 打包 App 的 CommandRunner 固定 UTF-8 locale，支持中文 revision 路径
+
+偏差：`@gpuix/react` 0.7.0 与当前官方文档只提供 Unified Diff，没有 split/side-by-side API。本阶段不展示模式切换，也不自定义 patch renderer。UI 回归测试已补充；当前机器运行 GPUIX native test renderer 时 Bun 1.4.0 在 Swift bridge 崩溃，未取得运行结果。
+
 ## 禁止插入的工作
 
 未改 PRD/Spec 之前不要做：Git、凭据存储、冲突编辑器、branch/tag、filesystem watcher、Windows、Rust SVN 库、路由库、遥测。

@@ -8,6 +8,7 @@ import { commitChanges } from '../../application/commitChanges';
 import { toAppError } from '../../application/errors';
 import { loadRevisionHistory, type HistoryReader } from '../../application/loadHistory';
 import { loadFileDiff, type DiffReader } from '../../application/loadDiff';
+import { loadRevisionDiff, type RevisionDiffReader } from '../../application/loadRevisionDiff';
 import {
   addPaths,
   deletePaths,
@@ -34,7 +35,7 @@ import {
   isRevertable,
   type WorkingCopyChange,
 } from '../../domain/change';
-import type { DiffResult } from '../../domain/diff';
+import type { DiffResult, RevisionDiffResult } from '../../domain/diff';
 import type { AppError } from '../../domain/error';
 import { canCommit, lastOutputLine, type MutationKind } from '../../domain/operation';
 import type { Repository } from '../../domain/repository';
@@ -51,10 +52,11 @@ import {
   selectBehind,
   selectRepository,
   selectSelectedPath,
+  selectSelectedRevision,
 } from '../../store/selectors';
 import { ChangesPanel } from '../changes/ChangesPanel';
 import { DiffPanel, type DiffView } from '../changes/DiffPanel';
-import { HistoryView } from '../history/HistoryView';
+import { HistoryView, type RevisionDiffView } from '../history/HistoryView';
 import type { RecentItem } from '../welcome/WelcomeScreen';
 import type { RepositoryPage } from '../../domain/repositoryPage';
 import { Sidebar } from './Sidebar';
@@ -62,7 +64,7 @@ import { WorkingCopyView } from './WorkingCopyView';
 
 export type RepositorySvn = WorkingCopyReader &
   DiffReader &
-  Partial<CommitClient & WorkingCopyMutator & HistoryReader>;
+  Partial<CommitClient & WorkingCopyMutator & HistoryReader & RevisionDiffReader>;
 
 type ConfirmKind = 'revert' | 'delete';
 
@@ -134,21 +136,26 @@ export function RepositoryScreen({
   const changes = useStore(store, selectChanges);
   const checkedPaths = useStore(store, selectCheckedPaths);
   const selectedPath = useStore(store, selectSelectedPath);
+  const selectedRevision = useStore(store, selectSelectedRevision);
   const mutating = useStore(store, selectMutating);
   const operationLine = useStore(store, selectOperationLine);
   const behind = useStore(store, selectBehind);
 
   const [statusGeneration, setStatusGeneration] = useState(0);
   const [diffView, setDiffView] = useState<DiffView>({ state: 'idle' });
+  const [revisionDiffView, setRevisionDiffView] = useState<RevisionDiffView>({ state: 'idle' });
   const [confirm, setConfirm] = useState<{ kind: ConfirmKind; targets: WorkingCopyChange[] } | null>(null);
 
   const generationRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const diffAbortRef = useRef<AbortController | null>(null);
   const diffRequestRef = useRef(0);
+  const revisionDiffAbortRef = useRef<AbortController | null>(null);
+  const revisionDiffRequestRef = useRef(0);
   const historyAbortRef = useRef<AbortController | null>(null);
   const historyGenRef = useRef(0);
   const diffCacheRef = useRef(new Map<string, DiffResult>());
+  const revisionDiffCacheRef = useRef(new Map<number, RevisionDiffResult>());
 
   const rootPath = repository?.rootPath;
   const runRefresh = useCallback(
@@ -189,11 +196,14 @@ export function RepositoryScreen({
     if (!live || !rootPath) return;
     store.getState().resetWorkingCopy(repository);
     setDiffView({ state: 'idle' });
+    setRevisionDiffView({ state: 'idle' });
     diffCacheRef.current.clear();
+    revisionDiffCacheRef.current.clear();
     void runRefresh();
     return () => {
       abortRef.current?.abort();
       diffAbortRef.current?.abort();
+      revisionDiffAbortRef.current?.abort();
       historyAbortRef.current?.abort();
     };
   }, [live, rootPath, repository, runRefresh, store]);
@@ -229,6 +239,57 @@ export function RepositoryScreen({
       historyAbortRef.current?.abort();
     };
   }, [live, page, runHistoryRefresh]);
+
+  useEffect(() => {
+    revisionDiffAbortRef.current?.abort();
+    const requestId = ++revisionDiffRequestRef.current;
+    if (!live || page !== 'history' || !rootPath || !svn || selectedRevision === null) {
+      setRevisionDiffView({ state: 'idle' });
+      return;
+    }
+
+    const cached = revisionDiffCacheRef.current.get(selectedRevision);
+    if (cached) {
+      setRevisionDiffView({ state: 'ready', revision: selectedRevision, result: cached });
+      return;
+    }
+
+    if (!svn.getRevisionDiff) {
+      setRevisionDiffView({ state: 'idle' });
+      return;
+    }
+
+    const getRevisionDiff = svn.getRevisionDiff.bind(svn);
+    const reader: RevisionDiffReader = { getRevisionDiff };
+    const controller = new AbortController();
+    revisionDiffAbortRef.current = controller;
+    setRevisionDiffView({ state: 'loading', revision: selectedRevision });
+
+    void loadRevisionDiff({
+      rootPath,
+      revision: selectedRevision,
+      svn: reader,
+      signal: controller.signal,
+    })
+      .then((result) => {
+        if (requestId !== revisionDiffRequestRef.current) return;
+        revisionDiffCacheRef.current.set(selectedRevision, result);
+        setRevisionDiffView({ state: 'ready', revision: selectedRevision, result });
+      })
+      .catch((error) => {
+        if (requestId !== revisionDiffRequestRef.current) return;
+        if (error instanceof CommandError && error.message === 'aborted') return;
+        setRevisionDiffView({
+          state: 'error',
+          revision: selectedRevision,
+          error: toAppError(error, 'Could not load revision diff'),
+        });
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [live, page, rootPath, selectedRevision, svn]);
 
   const selectedChange = changes.find((change) => change.path === selectedPath) ?? null;
 
@@ -515,7 +576,10 @@ export function RepositoryScreen({
         </div>
       ) : null}
       {page === 'history' ? (
-        <HistoryView onRefresh={() => void runHistoryRefresh()} />
+        <HistoryView
+          onRefresh={() => void runHistoryRefresh()}
+          diffView={live ? revisionDiffView : fixtureRevisionDiffView(selectedRevision)}
+        />
       ) : page === 'working-copy' ? (
         <WorkingCopyView
           workingCopyName={workingCopyName}
@@ -588,6 +652,11 @@ function fixtureDiffView(change: WorkingCopyChange | null): DiffView {
     return { state: 'ready', path: change.path, result: { kind: 'unversioned' } };
   }
   return { state: 'ready', path: change.path, result: { kind: 'text', patch: fixturePatch } };
+}
+
+function fixtureRevisionDiffView(revision: number | null): RevisionDiffView {
+  if (revision === null) return { state: 'idle' };
+  return { state: 'ready', revision, result: { kind: 'text', patch: fixturePatch } };
 }
 
 function uniquePaths(paths: readonly string[]): string[] {

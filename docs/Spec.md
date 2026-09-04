@@ -309,6 +309,8 @@ class CliSvnClient {
 Application 层分别定义 `WorkingCopyReader`、`DiffReader`、`CommitClient`、`WorkingCopyMutator`、`HistoryReader` 等最小 port；`CliSvnClient` 通过 TypeScript structural typing 满足它们。
 
 命令执行仍统一落到 `services/svn/CommandRunner`。UI 不直接依赖 CLI 细节。
+
+macOS App 从 Finder 启动时可能缺少 locale 环境变量。`CommandRunner` 为所有子进程固定 `LANG=en_US.UTF-8` 与 `LC_ALL=en_US.UTF-8`，保证 SVN 能处理中文及其他非 ASCII working-copy 路径；同时补全 Homebrew / MacPorts 的命令搜索路径。
 # 8. Command Runner
 
 禁止业务代码直接调用：
@@ -1032,6 +1034,29 @@ log({
 
 但 UI 暂不实现 pagination。
 
+## 32.1 Revision Diff
+
+命令：
+
+```bash
+svn diff --git --non-interactive -c REV -- .
+```
+
+`cwd`：
+
+```text
+repository.rootPath
+```
+
+输出作为完整 revision patch 传给 GPUIX `<diff patch={patch} wordDiff />`。同一 revision 同时包含文本与二进制文件时保留完整文本 patch；仅含二进制变更时返回 `binary`。
+
+Revision diff 是 `RepositoryScreen` 的 transient request state：
+
+- cache key 使用 revision number；
+- 切换 working copy 时清空；
+- 使用 `AbortController` + requestId；
+- 旧 revision 的完成结果不得覆盖当前选择。
+
 ---
 
 # 33. Store
@@ -1288,6 +1313,8 @@ Commit composer 固定属于 Changes Pane，不是横跨窗口的底栏；Histor
 ```
 
 不要第一版自己实现 syntax diff renderer。
+
+当前锁定的 `@gpuix/react` 0.7.0 只提供 Unified Diff viewer，没有 split/side-by-side 属性。Changes 与 History 统一使用 `<diff>`；不渲染无效的模式切换控件，也不自行拆 patch 行实现双栏。
 
 ---
 

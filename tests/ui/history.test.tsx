@@ -29,6 +29,11 @@ const revisions: SvnRevision[] = [
   },
 ];
 
+const revisionPatches = new Map([
+  [12, 'diff --git a/src/App.ts b/src/App.ts\n--- a/src/App.ts\n+++ b/src/App.ts\n@@ -1 +1 @@\n-old user\n+new user\n'],
+  [11, 'diff --git a/src/pages/profile.vue b/src/pages/profile.vue\n--- /dev/null\n+++ b/src/pages/profile.vue\n@@ -0,0 +1 @@\n+profile page\n'],
+]);
+
 async function waitFor(predicate: () => boolean): Promise<void> {
   for (let i = 0; i < 80; i++) {
     if (predicate()) return;
@@ -73,6 +78,7 @@ describe('History', () => {
     const { render, renderer, unmount } = createTestRoot({ width: 1440, height: 960 });
     try {
       let logCalls = 0;
+      const diffCalls: number[] = [];
       render(
         <RepositoryScreen
           repository={repo}
@@ -89,6 +95,12 @@ describe('History', () => {
             async getDiff() {
               return { kind: 'text', patch: '' };
             },
+            async getRevisionDiff(_root, revision) {
+              diffCalls.push(revision);
+              const patch = revisionPatches.get(revision);
+              if (patch === undefined) throw new Error(`missing revision fixture r${revision}`);
+              return { kind: 'text', patch };
+            },
             async getLog(_root, options) {
               logCalls += 1;
               expect(options?.limit ?? 100).toBe(100);
@@ -102,10 +114,14 @@ describe('History', () => {
       renderer.flush();
       expect(renderer.getAllText()).toContain('Fix user service');
       expect(renderer.getAllText()).toContain('/trunk/src/App.ts');
+      await waitFor(() => renderer.getAllText().includes('+new user'));
+      expect(diffCalls).toContain(12);
       click(renderer, 'revision-11');
+      await waitFor(() => renderer.getAllText().includes('+profile page'));
       renderer.flush();
       expect(renderer.getAllText()).toContain('Add profile page');
       expect(renderer.getAllText()).toContain('/trunk/src/pages/profile.vue');
+      expect(diffCalls).toContain(11);
       click(renderer, 'history-refresh');
       await waitFor(() => logCalls >= 2);
       expect(logCalls).toBeGreaterThanOrEqual(2);

@@ -10,6 +10,8 @@ export type DiffResult =
       kind: 'unversioned';
     };
 
+export type RevisionDiffResult = Extract<DiffResult, { kind: 'text' | 'binary' }>;
+
 export function countPatchLines(patch: string): { additions: number; deletions: number } {
   let additions = 0;
   let deletions = 0;

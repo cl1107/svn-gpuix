@@ -1,5 +1,5 @@
 import type { WorkingCopyChange } from '../../domain/change';
-import type { DiffResult } from '../../domain/diff';
+import type { DiffResult, RevisionDiffResult } from '../../domain/diff';
 import type { CommitResult, UpdateResult } from '../../domain/operation';
 import type { Repository } from '../../domain/repository';
 import type { SvnRevision } from '../../domain/revision';
@@ -8,7 +8,7 @@ import { checkoutRepository } from './checkout';
 import { CommandRunner } from './commandRunner';
 import { commitWorkingCopy } from './commit';
 import { deleteWorkingCopyPaths } from './delete';
-import { readWorkingCopyDiff } from './diff';
+import { readRevisionDiff, readWorkingCopyDiff } from './diff';
 import { readRepositoryInfo, readRemoteHeadRevision } from './info';
 import { revertWorkingCopyPaths } from './revert';
 import { readRevisionLog } from './log';
@@ -55,6 +55,14 @@ export class CliSvnClient {
 
   async getDiff(rootPath: string, path: string, signal?: AbortSignal): Promise<DiffResult> {
     return readWorkingCopyDiff(this.runner, { cwd: rootPath, path, signal });
+  }
+
+  async getRevisionDiff(
+    rootPath: string,
+    revision: number,
+    signal?: AbortSignal,
+  ): Promise<RevisionDiffResult> {
+    return readRevisionDiff(this.runner, { cwd: rootPath, revision, signal });
   }
 
   async commit(

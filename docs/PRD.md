@@ -944,6 +944,15 @@ Revision Info
 Changed Paths 使用状态 Badge + path 的列表形式。
 
 MVP 不要求 revision diff。
+
+MVP 完成后的 History revision diff 切片在 Revision Info 下方展示所选 revision 的完整 Unified Diff：
+
+- 选择 revision 后立即进入 loading；
+- 展示该 revision 对当前 working copy 路径的全部文本变更；
+- 仅含二进制变更时显示不可预览提示；
+- 快速切换 revision 时，旧请求结果不得覆盖当前选择。
+
+当前锁定的 GPUIX `<diff>` 只支持 Unified Diff。产品暂不展示左右并排模式切换；待 GPUIX 提供原生 split/side-by-side API 后，再为 Changes 与 History 加入共用的模式切换。
 ---
 
 # 22. Refresh

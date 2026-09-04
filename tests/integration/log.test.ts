@@ -28,6 +28,34 @@ describe('svn log 集成', () => {
     expect(revisions[0]?.changedPaths.some((path) => path.path.endsWith('readme.txt'))).toBe(true);
   }, 15000);
 
+  test('file:// working copy 能读取指定 revision 的完整 diff', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'svn-gpuix-revision-diff-'));
+    const repo = join(dir, 'repo');
+    const wc = join(dir, 'wc');
+    await run(['svnadmin', 'create', repo]);
+    await run(['svn', 'checkout', `file://${repo}`, wc]);
+    await writeFile(join(wc, 'readme.txt'), 'hello\n');
+    await run(['svn', 'add', 'readme.txt'], wc);
+    await run(['svn', 'commit', '-m', 'init readme'], wc);
+    await writeFile(join(wc, 'readme.txt'), 'hello\nrevision content\n');
+    await run(['svn', 'commit', '-m', 'change readme'], wc);
+    await writeFile(join(wc, 'readme.txt'), 'hello\nrevision content\nlocal only\n');
+
+    const svn = new CliSvnClient(new CommandRunner());
+    const revisions = await svn.getLog(wc, { limit: 1 });
+    const latest = revisions[0];
+    expect(latest?.message).toContain('change readme');
+    if (!latest) throw new Error('expected latest revision');
+
+    const result = await svn.getRevisionDiff(wc, latest.revision);
+    expect(result.kind).toBe('text');
+    if (result.kind === 'text') {
+      expect(result.patch).toContain('diff --git');
+      expect(result.patch).toContain('+revision content');
+      expect(result.patch).not.toContain('+local only');
+    }
+  }, 15000);
+
   test('子目录 working copy 只看到该路径的 log', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'svn-gpuix-log-nested-'));
     const repo = join(dir, 'repo');

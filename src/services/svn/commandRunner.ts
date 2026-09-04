@@ -42,6 +42,8 @@ const MACOS_COMMAND_PATHS = [
   '/opt/local/bin',
 ] as const;
 
+const MACOS_COMMAND_LOCALE = 'en_US.UTF-8';
+
 function commandEnvironment(): Record<string, string | undefined> | undefined {
   if (process.platform !== 'darwin') return undefined;
 
@@ -56,7 +58,14 @@ function commandEnvironment(): Record<string, string | undefined> | undefined {
     if (!searchPaths.includes(path)) searchPaths.push(path);
   }
 
-  return { ...process.env, PATH: searchPaths.join(':') };
+  // Finder-launched apps commonly omit locale variables. SVN then decodes
+  // non-ASCII working-copy paths with the C locale and rejects valid UTF-8.
+  return {
+    ...process.env,
+    PATH: searchPaths.join(':'),
+    LANG: MACOS_COMMAND_LOCALE,
+    LC_ALL: MACOS_COMMAND_LOCALE,
+  };
 }
 
 function commandErrorMessage(input: {

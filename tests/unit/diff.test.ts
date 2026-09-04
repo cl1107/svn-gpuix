@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { countPatchLines } from '../../src/domain/diff';
-import { classifyDiffOutput } from '../../src/services/svn/diff';
+import { classifyDiffOutput, classifyRevisionDiffOutput } from '../../src/services/svn/diff';
 
 describe('classifyDiffOutput', () => {
   test('普通 git patch 是 text', () => {
@@ -24,6 +24,30 @@ describe('classifyDiffOutput', () => {
     expect(classifyDiffOutput('', "svn: E200009: 'scratch.txt' is not under version control\n")).toEqual({
       kind: 'unversioned',
     });
+  });
+});
+
+describe('classifyRevisionDiffOutput', () => {
+  test('同一 revision 同时有文本与二进制变更时保留完整 patch', () => {
+    const patch = `diff --git a/readme.txt b/readme.txt
+--- a/readme.txt
++++ b/readme.txt
+@@ -1 +1 @@
+-old
++new
+diff --git a/photo.bin b/photo.bin
+Cannot display: file marked as a binary type.
+`;
+    expect(classifyRevisionDiffOutput(patch, '')).toEqual({ kind: 'text', patch });
+  });
+
+  test('revision 只有二进制变更时返回 binary', () => {
+    expect(
+      classifyRevisionDiffOutput(
+        'diff --git a/photo.bin b/photo.bin\nCannot display: file marked as a binary type.\n',
+        '',
+      ),
+    ).toEqual({ kind: 'binary' });
   });
 });
 

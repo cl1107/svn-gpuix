@@ -272,6 +272,8 @@ svn
 CommandRunner
 ```
 
+CommandRunner 同时规范 macOS GUI 进程环境：补全 SVN 搜索路径，并固定 UTF-8 locale。这样 Finder 启动的打包 App 与终端开发模式遵循相同的路径编码契约。
+
 ---
 
 # 9. Command Runner Design
@@ -949,6 +951,8 @@ RepositoryScreen
 这样 Workspace switcher、SVN Update Card、Quick actions 与 Working Copy identity 保持稳定，不因查看 History 被拆成另一套导航。
 
 History 与 Changes 主工作区不会同时渲染，因此仍满足“避免 Diff 与 History nested vertical scroll 冲突”的原始目标。
+
+Revision Detail 加载所选 revision 的完整 patch。请求状态使用带 revision discriminant 的 union，RepositoryScreen 持有 `AbortController`、requestId 和 revision cache；Infrastructure 通过 `CommandRunner` 执行 revision diff。Revision Detail 外层维持唯一纵向滚动，内部 `<diff>` 使用 flow 模式。
 # 32. Testing Pyramid
 
 ```text

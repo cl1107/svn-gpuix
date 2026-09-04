@@ -1,9 +1,11 @@
-import { useTheme } from '../../app/ThemeContext';
+import { useResolvedAppearance, useTheme } from '../../app/ThemeContext';
 import { useMemo, useState } from 'react';
 import { Icon } from '../../app/icons';
 import { font, layout, type ThemeTokens } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ErrorBanner';
+import type { RevisionDiffResult } from '../../domain/diff';
+import type { AppError } from '../../domain/error';
 import {
   authorInitial,
   filterRevisions,
@@ -28,9 +30,22 @@ function actionTone(theme: ThemeTokens): Record<PathAction, { color: string; bac
   };
 }
 
-export function HistoryView({ onRefresh }: { onRefresh: () => void }) {
+export type RevisionDiffView =
+  | { state: 'idle' }
+  | { state: 'loading'; revision: number }
+  | { state: 'ready'; revision: number; result: RevisionDiffResult }
+  | { state: 'error'; revision: number; error: AppError };
+
+export function HistoryView({
+  onRefresh,
+  diffView = { state: 'idle' },
+}: {
+  onRefresh: () => void;
+  diffView?: RevisionDiffView;
+}) {
 
   const theme = useTheme();
+  const resolvedAppearance = useResolvedAppearance();
   const revisions = useRepositoryStore(selectHistory);
   const selectedRevision = useRepositoryStore(selectSelectedRevision);
   const historyLoading = useRepositoryStore(selectHistoryLoading);
@@ -237,6 +252,55 @@ export function HistoryView({ onRefresh }: { onRefresh: () => void }) {
             <InfoRow label="Revision" value={`r${selected.revision}`} />
             <InfoRow label="Author" value={selected.author ?? 'unknown'} />
             {repositoryUrl ? <InfoRow label="Repository" value={repositoryUrl} /> : null}
+            <div
+              style={{
+                marginTop: 4,
+                paddingTop: 16,
+                borderTopWidth: 1,
+                borderColor: theme.border,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <text style={{ color: theme.text, fontSize: 13, fontFamily: font.ui, fontWeight: 600, flexGrow: 1 }}>
+                  Revision changes
+                </text>
+                <text style={{ color: theme.textSubtle, fontSize: 10, fontFamily: font.ui }}>
+                  Unified
+                </text>
+              </div>
+              {diffView.state === 'loading' && diffView.revision === selected.revision ? (
+                <text testId="revision-diff-loading" style={{ color: theme.textMuted, fontSize: 13, fontFamily: font.ui }}>
+                  Loading revision diff…
+                </text>
+              ) : diffView.state === 'error' && diffView.revision === selected.revision ? (
+                <ErrorBanner error={diffView.error} testId="revision-diff-error" />
+              ) : diffView.state === 'ready' && diffView.revision === selected.revision ? (
+                diffView.result.kind === 'binary' ? (
+                  <text testId="revision-diff-binary" style={{ color: theme.textMuted, fontSize: 13, fontFamily: font.ui }}>
+                    This revision only contains binary changes. Diff preview is unavailable.
+                  </text>
+                ) : diffView.result.patch.length > 0 ? (
+                  <diff
+                    testId="revision-diff"
+                    patch={diffView.result.patch}
+                    wordDiff
+                    theme={{ appearance: resolvedAppearance }}
+                    style={{ width: '100%' }}
+                  />
+                ) : (
+                  <text testId="revision-diff-empty" style={{ color: theme.textMuted, fontSize: 13, fontFamily: font.ui }}>
+                    No content changes in this revision.
+                  </text>
+                )
+              ) : (
+                <text style={{ color: theme.textMuted, fontSize: 13, fontFamily: font.ui }}>
+                  Select a revision to load its changes.
+                </text>
+              )}
+            </div>
           </>
         ) : (
           <text style={{ color: theme.textMuted, fontSize: 13, fontFamily: font.ui }}>Select a revision</text>
