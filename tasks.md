@@ -8,7 +8,7 @@
 
 阶段 9 已把主要历史冲突回写到 PRD / Spec / Architecture，以下作为实现准则：
 
-- 颜色、圆角、卡片、Titlebar、Welcome logo「R」、主界面信息层级以 Figma（https://www.figma.com/design/9gTShL5ZhiPRUMSiOoNN2P）和 PRD 为视觉基准。
+- 颜色、圆角、卡片、Titlebar、Revision 品牌标记（R / revision graph）、主界面信息层级以 Figma（https://www.figma.com/design/9gTShL5ZhiPRUMSiOoNN2P）和 PRD 为视觉基准。
 - Figma 的 Light 稿是视觉基线；应用实际支持 Light / Dark / System，三套模式共享 `theme.ts` token contract。
 - Titlebar 只放应用级 `Open working copy` / `Welcome screen` / Appearance；Refresh / Update / History 等 repository 级操作仍在内容区或 Sidebar。
 - History 与 Working Copy 都是 Repository shell 里的 Sidebar page，不是独立顶层路由。
@@ -173,7 +173,8 @@
 - [x] 核心 parser 单测 + `file://` 集成测
 - [x] 关键界面 screenshot smoke：Welcome / Changes / History / Working Copy
 - [x] 至少一条 MVP vertical happy path：checkout → status → diff → commit → clean → history
-- [x] 开发用 unsigned `bun build --compile` 命令（`bun run build`）
+- [x] Revision 应用图标：沿用 `#3363F2` / 圆角视觉，R 融合 revision graph 节点语义；Welcome 与 app bundle 共用同一品牌源
+- [x] unsigned 构建：`bun run build` 生成 standalone binary；macOS 同时生成带 `AppIcon.icns` 的 `Revision.app`，`bun run build:bin` 保留裸 binary 构建
 - [ ] macOS ARM64 本机最终验收：`bun run typecheck && bun test && bun run build`
 
 阶段 9 新增验收覆盖：
@@ -182,6 +183,7 @@
 - `tests/unit/error.test.ts`：locked / network / conflict / fallback。
 - `tests/ui/errorBanner.test.tsx`：Show Details 折叠/展开。
 - `tests/ui/workingCopy.test.tsx`：Working Copy 信息与 status summary。
+- `tests/ui/welcome.test.tsx`：Revision brand mark 出现在 Welcome。
 - `tests/ui/screenshots.test.tsx`：核心页面 GPU screenshot smoke。
 - `tests/integration/happyPath.test.ts`：真实 `svnadmin` / `file://` vertical happy path。
 
