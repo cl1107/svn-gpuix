@@ -69,4 +69,42 @@ describe('svn log 集成', () => {
     const revisions = await svn.getLog(wc, { limit: 100 });
     expect(revisions[0]?.message).toContain('mixed revision commit');
   }, 15000);
+
+  test('behind 只统计当前 working copy 路径尚未接收的 revision', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'svn-gpuix-behind-path-'));
+    const repo = join(dir, 'repo');
+    const rootWc = join(dir, 'root');
+    await run(['svnadmin', 'create', repo]);
+    await run(['svn', 'checkout', `file://${repo}`, rootWc]);
+    await run(['svn', 'mkdir', 'project-a', 'project-b'], rootWc);
+    await run(['svn', 'commit', '-m', 'add project dirs'], rootWc);
+    await writeFile(join(rootWc, 'project-a', 'a.txt'), 'a\n');
+    await writeFile(join(rootWc, 'project-b', 'b.txt'), 'b\n');
+    await run(['svn', 'add', 'project-a/a.txt', 'project-b/b.txt'], rootWc);
+    await run(['svn', 'commit', '-m', 'init projects'], rootWc);
+
+    const nested = join(dir, 'wc-a');
+    await run(['svn', 'checkout', `file://${repo}/project-a`, nested]);
+    await writeFile(join(rootWc, 'project-b', 'b.txt'), 'b2\n');
+    await run(['svn', 'commit', '-m', 'project b only'], rootWc);
+    await writeFile(join(rootWc, 'project-a', 'a.txt'), 'a2\n');
+    await run(['svn', 'commit', '-m', 'project a incoming'], rootWc);
+
+    const svn = new CliSvnClient(new CommandRunner());
+    expect(await svn.getIncomingRevisionCount(nested)).toBe(1);
+  }, 15000);
+
+  test('自己 commit 后无需 update 就保持 0 behind', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'svn-gpuix-behind-commit-'));
+    const repo = join(dir, 'repo');
+    const wc = join(dir, 'wc');
+    await run(['svnadmin', 'create', repo]);
+    await run(['svn', 'checkout', `file://${repo}`, wc]);
+    await writeFile(join(wc, 'readme.txt'), 'hello\n');
+    await run(['svn', 'add', 'readme.txt'], wc);
+    await run(['svn', 'commit', '-m', 'init readme'], wc);
+
+    const svn = new CliSvnClient(new CommandRunner());
+    expect(await svn.getIncomingRevisionCount(wc)).toBe(0);
+  }, 15000);
 });

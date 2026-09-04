@@ -1,28 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import {
-  calculateBehind,
   composeSyncLabel,
   getSyncTone,
 } from '../../src/domain/sync';
 
 describe('sync helpers', () => {
-  describe('calculateBehind', () => {
-    test('remoteRevision 未获取到或为 undefined 时返回 undefined', () => {
-      expect(calculateBehind(4, undefined)).toBeUndefined();
-      expect(calculateBehind(4, Number.NaN)).toBeUndefined();
-    });
-
-    test('remoteRevision 高于 wcRevision 时返回差值', () => {
-      expect(calculateBehind(4, 7)).toBe(3);
-      expect(calculateBehind(0, 1)).toBe(1);
-    });
-
-    test('remoteRevision 等于或低于 wcRevision 时返回 0', () => {
-      expect(calculateBehind(4, 4)).toBe(0);
-      expect(calculateBehind(4, 2)).toBe(0);
-    });
-  });
-
   describe('composeSyncLabel', () => {
     test('0 local 且 0 behind 显示 Up to date', () => {
       expect(composeSyncLabel({ localCount: 0, behind: 0 })).toBe('Up to date');

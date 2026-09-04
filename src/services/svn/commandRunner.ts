@@ -36,6 +36,29 @@ export class CommandError extends Error {
   }
 }
 
+const MACOS_COMMAND_PATHS = [
+  '/opt/homebrew/bin',
+  '/usr/local/bin',
+  '/opt/local/bin',
+] as const;
+
+function commandEnvironment(): Record<string, string | undefined> | undefined {
+  if (process.platform !== 'darwin') return undefined;
+
+  // Finder-launched apps may omit PATH entirely; the standard package-manager
+  // locations remain the product-defined search path in that environment.
+  const inheritedPath = process.env.PATH;
+  const inheritedPaths = inheritedPath === undefined
+    ? []
+    : inheritedPath.split(':').filter((path) => path.length > 0);
+  const searchPaths = [...inheritedPaths];
+  for (const path of MACOS_COMMAND_PATHS) {
+    if (!searchPaths.includes(path)) searchPaths.push(path);
+  }
+
+  return { ...process.env, PATH: searchPaths.join(':') };
+}
+
 function commandErrorMessage(input: {
   command: string[];
   exitCode: number;
@@ -106,6 +129,7 @@ export class CommandRunner {
     try {
       proc = Bun.spawn(request.argv, {
         cwd: request.cwd,
+        env: commandEnvironment(),
         stdout: 'pipe',
         stderr: 'pipe',
         stdin: 'ignore',

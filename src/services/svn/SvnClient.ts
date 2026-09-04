@@ -12,7 +12,7 @@ import { readWorkingCopyDiff } from './diff';
 import { readRepositoryInfo, readRemoteHeadRevision } from './info';
 import { revertWorkingCopyPaths } from './revert';
 import { readRevisionLog } from './log';
-import { readWorkingCopyStatus } from './status';
+import { readIncomingRevisionCount, readWorkingCopyStatus } from './status';
 import { updateWorkingCopy } from './update';
 
 export class CliSvnClient {
@@ -36,6 +36,17 @@ export class CliSvnClient {
 
   async getRemoteHeadRevision(path: string, signal?: AbortSignal): Promise<number> {
     return readRemoteHeadRevision(this.runner, path, signal);
+  }
+
+  async getIncomingRevisionCount(path: string, signal?: AbortSignal): Promise<number> {
+    const repository = await readRepositoryInfo(this.runner, path, signal);
+    return readIncomingRevisionCount(this.runner, {
+      cwd: path,
+      repositoryUrl: repository.repositoryUrl,
+      repositoryRoot: repository.repositoryRoot,
+      rootRevision: repository.revision,
+      signal,
+    });
   }
 
   async getStatus(path: string, signal?: AbortSignal): Promise<WorkingCopyChange[]> {

@@ -223,7 +223,7 @@ describe('Figma 主界面', () => {
     }
   });
 
-  test('wc-sync 在 remote revision 更高时显示 behind', async () => {
+  test('wc-sync 同时显示本地变更数和待接收 revision 数', async () => {
     if (!hasNativeTestRenderer) return;
     const { render, renderer, unmount } = createTestRoot({ width: 1440, height: 960 });
     try {
@@ -240,8 +240,8 @@ describe('Figma 主界面', () => {
             async getDiff() {
               return { kind: 'text' as const, patch: '' };
             },
-            async getRemoteRevision() {
-              return 6;
+            async getIncomingRevisionCount() {
+              return 2;
             },
           }}
           workingCopyName="demo-wc"
@@ -258,7 +258,7 @@ describe('Figma 主界面', () => {
     }
   });
 
-  test('wc-sync 无 local 变更且 remote revision 更高时显示 N behind', async () => {
+  test('wc-sync 无本地变更时显示待接收 revision 数', async () => {
     if (!hasNativeTestRenderer) return;
     const { render, renderer, unmount } = createTestRoot({ width: 1440, height: 960 });
     try {
@@ -275,8 +275,8 @@ describe('Figma 主界面', () => {
             async getDiff() {
               return { kind: 'text' as const, patch: '' };
             },
-            async getRemoteRevision() {
-              return 7;
+            async getIncomingRevisionCount() {
+              return 3;
             },
           }}
           workingCopyName="demo-wc"

@@ -1,10 +1,3 @@
-export function calculateBehind(wcRevision: number, remoteRevision?: number): number | undefined {
-  if (remoteRevision === undefined || Number.isNaN(remoteRevision)) {
-    return undefined;
-  }
-  return Math.max(0, remoteRevision - wcRevision);
-}
-
 export function composeSyncLabel(input: {
   localCount: number;
   behind?: number;

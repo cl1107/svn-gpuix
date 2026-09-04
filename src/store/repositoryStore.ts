@@ -11,13 +11,13 @@ export interface RefreshResult {
   changes: WorkingCopyChange[];
   checkedPaths: Set<string>;
   selectedPath: string | null;
-  remoteRevision?: number;
+  behind?: number;
 }
 
 export interface RepositoryStoreState {
   page: RepositoryPage;
   repository: Repository | undefined;
-  remoteRevision?: number;
+  behind?: number;
   changes: WorkingCopyChange[];
   checkedPaths: Set<string>;
   selectedPath: string | null;
@@ -38,7 +38,7 @@ export interface RepositoryStoreActions {
   selectPath: (path: string | null) => void;
   selectRevision: (revision: number | null) => void;
   setCommitMessage: (message: string) => void;
-  setRemoteRevision: (remoteRevision?: number) => void;
+  setBehind: (behind?: number) => void;
   togglePath: (path: string) => void;
   toggleAll: (paths: string[]) => void;
   applyRefreshResult: (result: RefreshResult) => void;
@@ -61,7 +61,7 @@ export type RepositoryState = RepositoryStoreState & RepositoryStoreActions;
 export interface CreateRepositoryStoreInput {
   page?: RepositoryPage;
   repository?: Repository;
-  remoteRevision?: number;
+  behind?: number;
   changes?: WorkingCopyChange[];
   checkedPaths?: Iterable<string>;
   selectedPath?: string | null;
@@ -75,7 +75,7 @@ function initialState(input: CreateRepositoryStoreInput): RepositoryStoreState {
   return {
     page: input.page ?? 'changes',
     repository: input.repository,
-    remoteRevision: input.remoteRevision,
+    behind: input.behind,
     changes: input.changes ?? [],
     checkedPaths: new Set(input.checkedPaths ?? []),
     selectedPath: input.selectedPath ?? null,
@@ -100,7 +100,7 @@ export function createRepositoryStore(input: CreateRepositoryStoreInput = {}) {
     selectPath: (selectedPath) => set({ selectedPath }),
     selectRevision: (selectedRevision) => set({ selectedRevision }),
     setCommitMessage: (commitMessage) => set({ commitMessage }),
-    setRemoteRevision: (remoteRevision) => set({ remoteRevision }),
+    setBehind: (behind) => set({ behind }),
 
     togglePath: (path) =>
       set((state) => {
@@ -124,7 +124,7 @@ export function createRepositoryStore(input: CreateRepositoryStoreInput = {}) {
     applyRefreshResult: (result) =>
       set({
         repository: result.repository,
-        remoteRevision: result.remoteRevision,
+        behind: result.behind,
         changes: result.changes,
         checkedPaths: new Set(result.checkedPaths),
         selectedPath: result.selectedPath,
@@ -164,7 +164,7 @@ export function createRepositoryStore(input: CreateRepositoryStoreInput = {}) {
     resetWorkingCopy: (repository) =>
       set({
         repository,
-        remoteRevision: undefined,
+        behind: undefined,
         changes: [],
         checkedPaths: new Set(),
         selectedPath: null,

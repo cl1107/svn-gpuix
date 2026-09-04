@@ -38,7 +38,7 @@ import type { DiffResult } from '../../domain/diff';
 import type { AppError } from '../../domain/error';
 import { canCommit, lastOutputLine, type MutationKind } from '../../domain/operation';
 import type { Repository } from '../../domain/repository';
-import { calculateBehind, composeSyncLabel } from '../../domain/sync';
+import { composeSyncLabel } from '../../domain/sync';
 import { CommandError } from '../../services/svn/commandRunner';
 import { RepositoryStoreProvider } from '../../store/RepositoryStoreContext';
 import { createRepositoryStore } from '../../store/repositoryStore';
@@ -48,7 +48,7 @@ import {
   selectMutating,
   selectOperationLine,
   selectPage,
-  selectRemoteRevision,
+  selectBehind,
   selectRepository,
   selectSelectedPath,
 } from '../../store/selectors';
@@ -136,7 +136,7 @@ export function RepositoryScreen({
   const selectedPath = useStore(store, selectSelectedPath);
   const mutating = useStore(store, selectMutating);
   const operationLine = useStore(store, selectOperationLine);
-  const remoteRevision = useStore(store, selectRemoteRevision);
+  const behind = useStore(store, selectBehind);
 
   const [statusGeneration, setStatusGeneration] = useState(0);
   const [diffView, setDiffView] = useState<DiffView>({ state: 'idle' });
@@ -282,7 +282,6 @@ export function RepositoryScreen({
 
   const shownRevision = liveRepo?.revision ?? revision;
   const busy = mutating !== null;
-  const behind = calculateBehind(shownRevision, remoteRevision);
   const syncLabel = mutating === 'update'
     ? operationLine || 'Updating…'
     : live

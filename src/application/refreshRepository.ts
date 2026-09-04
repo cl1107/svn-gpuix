@@ -10,8 +10,7 @@ import type { Repository } from '../domain/repository';
 export interface WorkingCopyReader {
   validateWorkingCopy(path: string, signal?: AbortSignal): Promise<Repository>;
   getStatus(path: string, signal?: AbortSignal): Promise<WorkingCopyChange[]>;
-  getRemoteRevision?(path: string, signal?: AbortSignal): Promise<number>;
-  getRemoteHeadRevision?(path: string, signal?: AbortSignal): Promise<number>;
+  getIncomingRevisionCount?(path: string, signal?: AbortSignal): Promise<number>;
 }
 
 export interface RefreshWorkingCopyResult {
@@ -19,7 +18,7 @@ export interface RefreshWorkingCopyResult {
   changes: WorkingCopyChange[];
   checkedPaths: Set<string>;
   selectedPath: string | null;
-  remoteRevision?: number;
+  behind?: number;
 }
 
 export async function refreshWorkingCopy(input: {
@@ -31,8 +30,8 @@ export async function refreshWorkingCopy(input: {
   forceChecked?: ReadonlySet<string>;
   signal?: AbortSignal;
 }): Promise<RefreshWorkingCopyResult> {
-  const fetchRemote = async (): Promise<number | undefined> => {
-    const fn = input.svn.getRemoteRevision?.bind(input.svn) ?? input.svn.getRemoteHeadRevision?.bind(input.svn);
+  const fetchBehind = async (): Promise<number | undefined> => {
+    const fn = input.svn.getIncomingRevisionCount?.bind(input.svn);
     if (!fn) return undefined;
     try {
       return await fn(input.rootPath, input.signal);
@@ -41,10 +40,10 @@ export async function refreshWorkingCopy(input: {
     }
   };
 
-  const [repository, raw, remoteRevision] = await Promise.all([
+  const [repository, raw, behind] = await Promise.all([
     input.svn.validateWorkingCopy(input.rootPath, input.signal),
     input.svn.getStatus(input.rootPath, input.signal),
-    fetchRemote(),
+    fetchBehind(),
   ]);
   const changes = sortChanges(visibleChanges(raw));
   const checkedPaths = reconcileCheckedPaths({
@@ -62,6 +61,6 @@ export async function refreshWorkingCopy(input: {
     changes,
     checkedPaths,
     selectedPath: reconcileSelectedPath(changes, input.previousSelected),
-    remoteRevision,
+    behind,
   };
 }

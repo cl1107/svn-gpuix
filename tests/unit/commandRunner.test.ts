@@ -10,6 +10,33 @@ describe('CommandRunner', () => {
     expect(result.stdout.trim()).toMatch(/^\d+\.\d+/);
   });
 
+  test('macOS GUI 的精简 PATH 仍能找到 Homebrew SVN', async () => {
+    const probe = Bun.spawn(
+      [
+        process.execPath,
+        '-e',
+        `import { CommandRunner } from './src/services/svn/commandRunner.ts';
+const result = await new CommandRunner().run({ argv: ['svn', '--version', '--quiet'] });
+process.stdout.write(result.stdout);`,
+      ],
+      {
+        cwd: process.cwd(),
+        env: { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    );
+
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(probe.stdout).text(),
+      new Response(probe.stderr).text(),
+      probe.exited,
+    ]);
+
+    expect(exitCode, stderr).toBe(0);
+    expect(stdout.trim()).toMatch(/^\d+\.\d+/);
+  });
+
   test('AbortSignal 会杀掉进程', async () => {
     const controller = new AbortController();
     const pending = runner.run({ argv: ['sleep', '8'], signal: controller.signal });

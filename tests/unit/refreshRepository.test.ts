@@ -63,7 +63,7 @@ describe('refreshWorkingCopy', () => {
     expect(result.checkedPaths.has('scratch.txt')).toBe(true);
   });
 
-  test('并行获取 remoteRevision 成功时返回 remoteRevision', async () => {
+  test('并行获取真实 behind 数量并返回', async () => {
     const result = await refreshWorkingCopy({
       rootPath: repo.rootPath,
       previousChecked: new Set(),
@@ -76,16 +76,16 @@ describe('refreshWorkingCopy', () => {
         async getStatus() {
           return [];
         },
-        async getRemoteRevision() {
-          return 14;
+        async getIncomingRevisionCount() {
+          return 2;
         },
       },
     });
     expect(result.repository.revision).toBe(9);
-    expect(result.remoteRevision).toBe(14);
+    expect(result.behind).toBe(2);
   });
 
-  test('remoteRevision 获取失败（离线/网络错误）时不抛错且 remoteRevision 为 undefined', async () => {
+  test('behind 获取失败（离线/网络错误）时不抛错且 behind 为 undefined', async () => {
     const result = await refreshWorkingCopy({
       rootPath: repo.rootPath,
       previousChecked: new Set(),
@@ -98,12 +98,12 @@ describe('refreshWorkingCopy', () => {
         async getStatus() {
           return [];
         },
-        async getRemoteRevision() {
+        async getIncomingRevisionCount() {
           throw new Error('E170013: Unable to connect to a repository');
         },
       },
     });
     expect(result.repository.revision).toBe(9);
-    expect(result.remoteRevision).toBeUndefined();
+    expect(result.behind).toBeUndefined();
   });
 });

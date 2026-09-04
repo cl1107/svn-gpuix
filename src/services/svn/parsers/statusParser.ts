@@ -2,6 +2,11 @@ import { isAbsolute, join, relative } from 'node:path';
 import type { SvnChangeStatus, WorkingCopyChange } from '../../../domain/change';
 import { asRecordArray, isRecord, readRevision, readString, svnXmlParser } from './xml';
 
+export interface IncomingStatusEntry {
+  path: string;
+  revision?: number;
+}
+
 const ITEM_STATUS: Record<string, SvnChangeStatus> = {
   modified: 'modified',
   added: 'added',
@@ -30,6 +35,37 @@ export function parseStatusXml(xml: string, rootPath: string): WorkingCopyChange
     }
   }
   return changes;
+}
+
+export function parseIncomingStatusXml(xml: string, rootPath: string): IncomingStatusEntry[] {
+  const parsed: unknown = svnXmlParser.parse(xml);
+  if (!isRecord(parsed) || !isRecord(parsed.status)) {
+    throw new Error('svn status XML is missing <status>');
+  }
+
+  const entries: IncomingStatusEntry[] = [];
+  for (const target of asRecordArray(parsed.status.target)) {
+    for (const entry of asRecordArray(target.entry)) {
+      const rawPath = readString(entry['@_path']);
+      const wcStatus = asRecordArray(entry['wc-status'])[0];
+      const reposStatus = asRecordArray(entry['repos-status'])[0];
+      if (!rawPath || !wcStatus || !reposStatus || !hasRepositoryChange(reposStatus)) continue;
+
+      const parsedEntry: IncomingStatusEntry = {
+        path: toRelativePath(rawPath, rootPath),
+      };
+      const revision = readRevision(wcStatus['@_revision']);
+      if (revision !== undefined) parsedEntry.revision = revision;
+      entries.push(parsedEntry);
+    }
+  }
+  return entries;
+}
+
+function hasRepositoryChange(status: Record<string, unknown>): boolean {
+  const item = readString(status['@_item']) ?? 'none';
+  const props = readString(status['@_props']) ?? 'none';
+  return item !== 'none' || props !== 'none';
 }
 
 function parseEntry(entry: Record<string, unknown>, rootPath: string): WorkingCopyChange | null {

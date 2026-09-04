@@ -171,6 +171,7 @@
 - [x] Working Copy 页面：Local checkout / Repository / Status 概览 + Refresh / Update
 - [x] `Show in Finder` 放在 Working Copy 的 Local path 旁（打开仓库根）；Sidebar Quick action 改为当前文件 `Reveal in Finder`；Diff 顶栏去掉空图标按钮
 - [x] 核心 parser 单测 + `file://` 集成测
+- [x] Sidebar `behind` 按当前 working copy 真正待接收的 revision 计数；其他仓库路径跳号与自己 commit 后不误报
 - [x] 关键界面 screenshot smoke：Welcome / Changes / History / Working Copy
 - [x] 至少一条 MVP vertical happy path：checkout → status → diff → commit → clean → history
 - [x] Revision 应用图标：沿用 `#3363F2` / 圆角视觉，R 融合 revision graph 节点语义；Welcome 与 app bundle 共用同一品牌源
@@ -181,11 +182,13 @@
 
 - `tests/unit/shortcuts.test.ts`：Cmd+R。
 - `tests/unit/error.test.ts`：locked / network / conflict / fallback。
+- `tests/unit/commandRunner.test.ts`：macOS GUI 精简 `PATH` 下仍能找到 Homebrew SVN。
 - `tests/ui/errorBanner.test.tsx`：Show Details 折叠/展开。
 - `tests/ui/workingCopy.test.tsx`：Working Copy 信息与 status summary。
 - `tests/ui/welcome.test.tsx`：Revision brand mark 出现在 Welcome。
 - `tests/ui/screenshots.test.tsx`：核心页面 GPU screenshot smoke。
 - `tests/integration/happyPath.test.ts`：真实 `svnadmin` / `file://` vertical happy path。
+- `tests/integration/log.test.ts`：路径相关的 behind 计数，以及 commit 后无需 update 保持 0 behind。
 
 当前远程工具环境不能运行 macOS GPUIX native renderer，也未宣称上述最终命令已经通过；最后一项保留为本机验收门槛。
 
