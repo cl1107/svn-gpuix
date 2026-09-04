@@ -33,12 +33,14 @@ export function WorkingCopyView({
   svnVersion,
   onRefresh,
   onUpdate,
+  onShowInFinder,
 }: {
   workingCopyName: string;
   workingCopyPath: string;
   svnVersion?: string;
   onRefresh: () => void;
   onUpdate: () => void;
+  onShowInFinder?: () => void;
 }) {
   const theme = useTheme();
   const repository = useRepositoryStore(selectRepository);
@@ -116,7 +118,23 @@ export function WorkingCopyView({
 
         <Section title="Local checkout">
           <InfoRow label="Name" value={workingCopyName} />
-          <InfoRow label="Local path" value={workingCopyPath} mono testId="working-copy-local-path" />
+          <InfoRow
+            label="Local path"
+            value={workingCopyPath}
+            mono
+            testId="working-copy-local-path"
+            action={
+              onShowInFinder ? (
+                <Button
+                  label="Show in Finder"
+                  variant="secondary"
+                  size="sm"
+                  onClick={onShowInFinder}
+                  testId="working-copy-show-in-finder"
+                />
+              ) : null
+            }
+          />
         </Section>
 
         <Section title="Repository">
@@ -230,11 +248,13 @@ function InfoRow({
   value,
   mono,
   testId,
+  action,
 }: {
   label: string;
   value: string;
   mono?: boolean;
   testId?: string;
+  action?: ReactNode;
 }) {
   const theme = useTheme();
   return (
@@ -253,6 +273,7 @@ function InfoRow({
       >
         {value}
       </text>
+      {action}
     </div>
   );
 }

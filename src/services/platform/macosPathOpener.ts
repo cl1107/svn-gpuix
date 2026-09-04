@@ -20,4 +20,24 @@ export class MacOSPathOpener implements PathOpener {
       argv: ['open', target],
     });
   }
+
+  async revealPaths(paths: readonly string[]): Promise<void> {
+    const targets = uniqueAbsolutePaths(paths);
+    if (targets.length === 0) return;
+    await this.runner.run({
+      argv: ['open', '-R', ...targets],
+    });
+  }
+}
+
+function uniqueAbsolutePaths(paths: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const path of paths) {
+    const target = resolveAbsolutePath(path);
+    if (!target || seen.has(target)) continue;
+    seen.add(target);
+    out.push(target);
+  }
+  return out;
 }

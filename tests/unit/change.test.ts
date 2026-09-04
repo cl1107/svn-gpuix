@@ -1,11 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 import {
   defaultChecked,
+  finderRevealTarget,
   isAddable,
   isCommittable,
   isDeletable,
   isRevertable,
   needsForceDelete,
+  parentAbsolutePath,
   reconcileCheckedPaths,
   reconcileSelectedPath,
   sortChanges,
@@ -73,6 +75,16 @@ describe('mutation 资格', () => {
     expect(isDeletable(change('a.ts', 'modified'))).toBe(true);
     expect(isDeletable(change('a.ts', 'unversioned'))).toBe(false);
     expect(needsForceDelete(change('gone.ts', 'missing'))).toBe(true);
+  });
+});
+
+describe('finderRevealTarget', () => {
+  test('普通文件用绝对路径，deleted/missing 用父目录', () => {
+    expect(finderRevealTarget(change('src/a.ts', 'modified'))).toBe('/wc/src/a.ts');
+    expect(finderRevealTarget(change('src/gone.ts', 'deleted'))).toBe('/wc/src');
+    expect(finderRevealTarget(change('missing.txt', 'missing'))).toBe('/wc');
+    expect(parentAbsolutePath('/tmp/demo-wc/src/a.ts')).toBe('/tmp/demo-wc/src');
+    expect(parentAbsolutePath('/tmp')).toBe('/');
   });
 });
 

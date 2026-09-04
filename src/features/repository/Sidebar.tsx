@@ -8,8 +8,6 @@ import type { RecentItem } from '../welcome/WelcomeScreen';
 import { selectChanges, selectMutating, selectPage } from '../../store/selectors';
 import { useRepositoryStore } from '../../store/RepositoryStoreContext';
 
-import type { PathOpener } from '../../services/platform/pathOpener';
-
 export type { RepositoryPage } from '../../domain/repositoryPage';
 
 export function Sidebar({
@@ -23,8 +21,7 @@ export function Sidebar({
   onAddUnversioned,
   onRevertSelected,
   onDeleteSelected,
-  onShowInFinder,
-  opener,
+  onRevealInFinder,
   recents,
   currentPath,
   onSwitchWorkingCopy,
@@ -39,8 +36,7 @@ export function Sidebar({
   onAddUnversioned?: () => void;
   onRevertSelected?: () => void;
   onDeleteSelected?: () => void;
-  onShowInFinder?: () => void;
-  opener?: PathOpener;
+  onRevealInFinder?: () => void;
   recents?: RecentItem[];
   currentPath?: string;
   onSwitchWorkingCopy?: (path: string) => void;
@@ -57,17 +53,6 @@ export function Sidebar({
   const syncColor = updating ? theme.textMuted : isBehind ? theme.warning : theme.success;
   const [menuOpen, setMenuOpen] = useState(false);
   const canSwitch = Boolean(onSwitchWorkingCopy) && (recents?.length ?? 0) > 0 && !mutating;
-
-  const targetPath = currentPath || workingCopyPath;
-  const handleShowInFinder = onShowInFinder
-    ? onShowInFinder
-    : opener && targetPath
-      ? () => {
-          void opener.openPath(targetPath).catch((error) => {
-            console.error('Failed to open working copy in Finder', error);
-          });
-        }
-      : undefined;
 
   useEffect(() => {
     return addShortcutListener((action) => {
@@ -225,10 +210,10 @@ export function Sidebar({
         />
         <QuickAction
           icon="folder"
-          label="Show in Finder"
-          testId="show-in-finder"
-          disabled={!workingCopyPath || !handleShowInFinder}
-          onClick={handleShowInFinder}
+          label="Reveal in Finder"
+          testId="reveal-in-finder"
+          disabled={!onRevealInFinder}
+          onClick={onRevealInFinder}
         />
       </div>
 

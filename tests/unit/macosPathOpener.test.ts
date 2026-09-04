@@ -61,4 +61,32 @@ describe('MacOSPathOpener', () => {
     await opener.openPath('   ');
     expect(ran).toBe(false);
   });
+
+  test('revealPaths calls runner with open -R and unique absolute paths', async () => {
+    let capturedRequest: CommandRequest | null = null;
+    const opener = new MacOSPathOpener(
+      new FakeRunner(async (request) => {
+        capturedRequest = request;
+        return { exitCode: 0, stdout: '', stderr: '' };
+      }) as never,
+    );
+
+    await opener.revealPaths(['/tmp/demo-wc/src/a.ts', '/tmp/demo-wc/src/a.ts', '  ']);
+
+    expect(capturedRequest).not.toBeNull();
+    expect(capturedRequest!.argv).toEqual(['open', '-R', '/tmp/demo-wc/src/a.ts']);
+  });
+
+  test('revealPaths with empty list does not run command', async () => {
+    let ran = false;
+    const opener = new MacOSPathOpener(
+      new FakeRunner(async () => {
+        ran = true;
+        return { exitCode: 0, stdout: '', stderr: '' };
+      }) as never,
+    );
+
+    await opener.revealPaths([]);
+    expect(ran).toBe(false);
+  });
 });

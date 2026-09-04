@@ -27,6 +27,7 @@ import {
   fixturePatch,
 } from '../../design/fixtures';
 import {
+  finderRevealTarget,
   isAddable,
   isCommittable,
   isDeletable,
@@ -75,7 +76,6 @@ export function RepositoryScreen({
   svn,
   operations,
   opener,
-  onShowInFinder,
   initialCommitMessage,
   recents,
   noticeError,
@@ -90,7 +90,6 @@ export function RepositoryScreen({
   svn?: RepositorySvn;
   operations?: OperationManager;
   opener?: PathOpener;
-  onShowInFinder?: () => void;
   initialCommitMessage?: string;
   recents?: RecentItem[];
   noticeError?: AppError | null;
@@ -299,6 +298,28 @@ export function RepositoryScreen({
     (targets ?? changes.filter((change) => checkedPaths.has(change.path))).filter(isRevertable);
   const deletable = (targets?: WorkingCopyChange[]) =>
     (targets ?? changes.filter((change) => checkedPaths.has(change.path))).filter(isDeletable);
+  const revealable = () => {
+    const targets = selectedChange
+      ? [selectedChange]
+      : changes.filter((change) => checkedPaths.has(change.path));
+    return uniquePaths(targets.map(finderRevealTarget));
+  };
+
+  const showWorkingCopyInFinder = () => {
+    const target = rootPath || workingCopyPath;
+    if (!opener || !target) return;
+    void opener.openPath(target).catch((error) => {
+      console.error('Failed to open working copy in Finder', error);
+    });
+  };
+
+  const revealSelectedInFinder = () => {
+    const targets = revealable();
+    if (!opener || targets.length === 0) return;
+    void opener.revealPaths(targets).catch((error) => {
+      console.error('Failed to reveal path in Finder', error);
+    });
+  };
 
   const runMutation = async (kind: MutationKind, work: () => Promise<void>, forceChecked?: ReadonlySet<string>) => {
     if (!live || !rootPath || !svn || !operations) return;
@@ -470,19 +491,7 @@ export function RepositoryScreen({
         }}
         onRevertSelected={() => requestConfirm('revert', revertable())}
         onDeleteSelected={() => requestConfirm('delete', deletable())}
-        onShowInFinder={
-          onShowInFinder
-            ? onShowInFinder
-            : opener && (rootPath || workingCopyPath)
-              ? () => {
-                  const target = rootPath || workingCopyPath;
-                  void opener.openPath(target).catch((error) => {
-                    console.error('Failed to open working copy in Finder', error);
-                  });
-                }
-              : undefined
-        }
-        opener={opener}
+        onRevealInFinder={opener && revealable().length > 0 ? revealSelectedInFinder : undefined}
         recents={recents}
         currentPath={rootPath}
         onSwitchWorkingCopy={
@@ -515,6 +524,7 @@ export function RepositoryScreen({
           svnVersion={svnVersion}
           onRefresh={() => void runRefresh()}
           onUpdate={runUpdate}
+          onShowInFinder={opener && (rootPath || workingCopyPath) ? showWorkingCopyInFinder : undefined}
         />
       ) : (
         <>
@@ -579,4 +589,15 @@ function fixtureDiffView(change: WorkingCopyChange | null): DiffView {
     return { state: 'ready', path: change.path, result: { kind: 'unversioned' } };
   }
   return { state: 'ready', path: change.path, result: { kind: 'text', patch: fixturePatch } };
+}
+
+function uniquePaths(paths: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const path of paths) {
+    if (!path || seen.has(path)) continue;
+    seen.add(path);
+    out.push(path);
+  }
+  return out;
 }

@@ -1,5 +1,4 @@
 import { useResolvedAppearance, useTheme } from '../../app/ThemeContext';
-import { Icon } from '../../app/icons';
 import { font } from '../../app/theme';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ErrorBanner';
@@ -97,7 +96,6 @@ export function DiffPanel({
           onClick={onDelete}
           testId="delete-file"
         />
-        <ChromeIcon />
       </div>
 
       {error ? (
@@ -206,23 +204,3 @@ function emptyMessage(input: {
   return 'Select a file to view its diff.';
 }
 
-function ChromeIcon() {
-  const theme = useTheme();
-  return (
-    <div
-      style={{
-        width: 34,
-        height: 34,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: theme.border,
-        backgroundColor: theme.panel,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Icon name="menu" size={14} color={theme.text} />
-    </div>
-  );
-}

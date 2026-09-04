@@ -113,6 +113,21 @@ export function selectedChanges(
   return changes.filter((change) => checkedPaths.has(change.path));
 }
 
+/** Deleted / missing 文件磁盘上已不在，Reveal 时打开父目录。 */
+export function finderRevealTarget(change: WorkingCopyChange): string {
+  if (change.status === 'deleted' || change.status === 'missing') {
+    return parentAbsolutePath(change.absolutePath);
+  }
+  return change.absolutePath;
+}
+
+export function parentAbsolutePath(absolutePath: string): string {
+  const trimmed = absolutePath.replace(/\/+$/, '');
+  const index = trimmed.lastIndexOf('/');
+  if (index <= 0) return '/';
+  return trimmed.slice(0, index);
+}
+
 export function sortChanges(changes: WorkingCopyChange[]): WorkingCopyChange[] {
   return [...changes].sort((a, b) => {
     const dirA = dirName(a.path);

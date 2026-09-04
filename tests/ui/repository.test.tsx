@@ -22,10 +22,11 @@ const liveChanges: WorkingCopyChange[] = [
 ];
 
 async function waitFor(predicate: () => boolean): Promise<void> {
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 80; i++) {
     if (predicate()) return;
     await Bun.sleep(10);
   }
+  throw new Error('timed out');
 }
 
 describe('Figma 主界面', () => {
@@ -117,14 +118,15 @@ describe('Figma 主界面', () => {
     }
   });
 
-  test('Sidebar Quick action: Show in Finder 存在且点击调用 opener 传入 working copy 绝对路径', async () => {
+  test('Sidebar Quick action: Reveal in Finder 点击 reveal 当前选中文件', async () => {
     if (!hasNativeTestRenderer) return;
     const { render, renderer, unmount } = createTestRoot({ width: 1440, height: 960 });
     try {
-      const opened: string[] = [];
+      const revealed: string[][] = [];
       const mockOpener: PathOpener = {
-        async openPath(path: string) {
-          opened.push(path);
+        async openPath() {},
+        async revealPaths(paths) {
+          revealed.push([...paths]);
         },
       };
 
@@ -149,10 +151,20 @@ describe('Figma 主界面', () => {
         />,
       );
       renderer.flush();
+      await waitFor(() => Boolean(renderer.findByTestId('select-src/a.ts')));
+      renderer.flush();
 
-      const action = renderer.findByTestId('show-in-finder');
+      const row = renderer.findByTestId('select-src/a.ts');
+      const rowBounds = renderer.getElementBounds(row!.id);
+      expect(rowBounds).toBeTruthy();
+      const [rx, ry, rw, rh] = rowBounds as number[];
+      renderer.nativeSimulateClick(rx + rw / 2, ry + rh / 2);
+      renderer.flush();
+
+      const action = renderer.findByTestId('reveal-in-finder');
       expect(action).toBeTruthy();
-      expect(renderer.getAllText()).toContain('Show in Finder');
+      expect(renderer.getAllText()).toContain('Reveal in Finder');
+      expect(renderer.findByTestId('show-in-finder')).toBeUndefined();
 
       const bounds = renderer.getElementBounds(action!.id);
       expect(bounds).toBeTruthy();
@@ -160,26 +172,22 @@ describe('Figma 主界面', () => {
       renderer.nativeSimulateClick(x + w / 2, y + h / 2);
       renderer.flush();
 
-      expect(opened).toEqual(['/tmp/demo-wc']);
+      expect(revealed).toEqual([['/tmp/demo-wc/src/a.ts']]);
     } finally {
       unmount();
     }
   });
 
-  test('Sidebar Quick action: Show in Finder 在 SVN mutation 期间仍保持启用', async () => {
+  test('Sidebar Quick action: Reveal in Finder 在 SVN mutation 期间仍保持启用', async () => {
     if (!hasNativeTestRenderer) return;
     const { render, renderer, unmount } = createTestRoot({ width: 1440, height: 960 });
     try {
-      const opened: string[] = [];
-      const mockOpener: PathOpener = {
-        async openPath(path: string) {
-          opened.push(path);
-        },
-      };
+      const revealed: string[][] = [];
 
       const store = createRepositoryStore({
         changes: liveChanges,
         repository: liveRepo,
+        selectedPath: 'src/a.ts',
       });
       store.getState().tryBeginMutation('update');
 
@@ -192,13 +200,15 @@ describe('Figma 主界面', () => {
             revision={4}
             syncLabel="Updating…"
             onUpdate={() => {}}
-            opener={mockOpener}
+            onRevealInFinder={() => {
+              revealed.push(['/tmp/demo-wc/src/a.ts']);
+            }}
           />
         </RepositoryStoreProvider>,
       );
       renderer.flush();
 
-      const action = renderer.findByTestId('show-in-finder');
+      const action = renderer.findByTestId('reveal-in-finder');
       expect(action).toBeTruthy();
 
       const bounds = renderer.getElementBounds(action!.id);
@@ -207,7 +217,7 @@ describe('Figma 主界面', () => {
       renderer.nativeSimulateClick(x + w / 2, y + h / 2);
       renderer.flush();
 
-      expect(opened).toEqual(['/tmp/demo-wc']);
+      expect(revealed).toEqual([['/tmp/demo-wc/src/a.ts']]);
     } finally {
       unmount();
     }
@@ -240,11 +250,9 @@ describe('Figma 主界面', () => {
         />,
       );
       renderer.flush();
-      await waitFor(() => Boolean(renderer.findByTestId('wc-sync')));
+      await waitFor(() => renderer.getAllText().includes('2 local changes · 2 behind'));
       renderer.flush();
-      expect(renderer.findByTestId('wc-sync')).toBeTruthy();
-      const texts = renderer.getAllText();
-      expect(texts).toContain('2 local changes · 2 behind');
+      expect(renderer.getAllText()).toContain('2 local changes · 2 behind');
     } finally {
       unmount();
     }
@@ -277,11 +285,9 @@ describe('Figma 主界面', () => {
         />,
       );
       renderer.flush();
-      await waitFor(() => Boolean(renderer.findByTestId('wc-sync')));
+      await waitFor(() => renderer.getAllText().includes('3 behind'));
       renderer.flush();
-      expect(renderer.findByTestId('wc-sync')).toBeTruthy();
-      const texts = renderer.getAllText();
-      expect(texts).toContain('3 behind');
+      expect(renderer.getAllText()).toContain('3 behind');
     } finally {
       unmount();
     }

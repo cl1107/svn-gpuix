@@ -169,6 +169,7 @@
 - [x] 空态 / Error Banner（含折叠的 Show Details）
 - [x] `classifySvnError`：not-working-copy / auth / locked / network / conflict / fallback
 - [x] Working Copy 页面：Local checkout / Repository / Status 概览 + Refresh / Update
+- [x] `Show in Finder` 放在 Working Copy 的 Local path 旁（打开仓库根）；Sidebar Quick action 改为当前文件 `Reveal in Finder`；Diff 顶栏去掉空图标按钮
 - [x] 核心 parser 单测 + `file://` 集成测
 - [x] 关键界面 screenshot smoke：Welcome / Changes / History / Working Copy
 - [x] 至少一条 MVP vertical happy path：checkout → status → diff → commit → clean → history

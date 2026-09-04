@@ -263,7 +263,8 @@ Working Copy 页面固定显示约 **238px** 宽的 Sidebar。
 4. **Quick actions**
    - Add unversioned files；
    - Revert selected；
-   - More SVN actions。
+   - Delete selected；
+   - Reveal in Finder（当前 Changes 选中文件）。
 5. 底部 SVN CLI 版本信息。
 
 Sidebar 负责导航和 working copy 级操作，不承担 Changed Files 列表。
@@ -1015,7 +1016,7 @@ Working Copy 页面展示：
 ```text
 Working Copy
 - Name
-- Local Path
+- Local Path（路径旁 `Show in Finder`，打开 working copy 根目录）
 
 Repository
 - Repository URL
