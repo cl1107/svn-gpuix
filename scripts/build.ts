@@ -8,7 +8,7 @@ const dist = path.join(root, 'dist');
 const binary = path.join(dist, 'revision');
 const appName = 'Revision';
 const appBundle = path.join(dist, `${appName}.app`);
-const sourceIcon = path.join(root, 'assets', 'app-icon.png');
+const masterIcon = path.join(dist, 'app-icon.png');
 const iconset = path.join(dist, 'AppIcon.iconset');
 const icns = path.join(dist, 'AppIcon.icns');
 
@@ -42,6 +42,8 @@ async function compileBinary(): Promise<void> {
 }
 
 async function buildMacIcon(): Promise<void> {
+  run('swift', [path.join(root, 'scripts', 'render-app-icon.swift'), masterIcon]);
+
   await rm(iconset, { recursive: true, force: true });
   await mkdir(iconset, { recursive: true });
 
@@ -63,7 +65,7 @@ async function buildMacIcon(): Promise<void> {
       '-z',
       String(pixels),
       String(pixels),
-      sourceIcon,
+      masterIcon,
       '--out',
       path.join(iconset, name),
     ]);
