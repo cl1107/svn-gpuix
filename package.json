@@ -11,7 +11,8 @@
     "dev:welcome": "SVN_GPUIX_PREVIEW=welcome bun --hot src/main.tsx",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "build": "bun build --compile src/main.tsx --outfile dist/revision"
+    "build": "bun run scripts/build.ts",
+    "build:bin": "bun build --compile src/main.tsx --outfile dist/revision"
   },
   "dependencies": {
     "@gpuix/native": "0.7.0",

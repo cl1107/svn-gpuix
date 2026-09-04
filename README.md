@@ -30,6 +30,19 @@ bun run dev:history
 bun run dev:working-copy
 ```
 
+## 构建
+
+```bash
+bun run build
+```
+
+在 macOS 上会同时生成：
+
+- `dist/revision`：standalone Bun binary
+- `dist/Revision.app`：带 Revision 应用图标的 macOS app bundle
+
+应用图标的唯一可编辑源文件是 `assets/app-icon.svg`，Welcome 品牌位和 macOS app bundle 都直接使用它。构建时优先通过系统 `sips` 将 SVG 转为 1024px master PNG；若当前 macOS 的 `sips` 不支持 SVG，则回退到系统 Quick Look (`qlmanage`)；随后用 `sips` / `iconutil` 生成 `AppIcon.icns`，不需要额外图形依赖。若只需要原来的裸 binary，可运行 `bun run build:bin`。
+
 阶段 9 验收：
 
 ```bash

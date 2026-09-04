@@ -1,3 +1,4 @@
+import { BrandMark } from '../../app/BrandMark';
 import { useTheme } from '../../app/ThemeContext';
 import { Icon } from '../../app/icons';
 import { font } from '../../app/theme';
@@ -64,19 +65,7 @@ export function WelcomeScreen({
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 16,
-              backgroundColor: theme.accent,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <text style={{ color: theme.accentText, fontSize: 26, fontFamily: font.ui }}>R</text>
-          </div>
+          <BrandMark size={56} />
           <text
             testId="welcome-title"
             style={{ color: theme.text, fontSize: 28, fontFamily: font.ui }}

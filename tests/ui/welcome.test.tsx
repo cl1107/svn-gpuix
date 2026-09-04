@@ -4,7 +4,7 @@ import { WelcomeScreen } from '../../src/features/welcome/WelcomeScreen';
 import { svnNotFoundError } from '../../src/domain/error';
 
 describe('WelcomeScreen', () => {
-  test('svn 可用时渲染主文案和版本', () => {
+  test('svn 可用时渲染品牌图标、主文案和版本', () => {
     if (!hasNativeTestRenderer) return;
 
     const { render, renderer, unmount } = createTestRoot({ width: 1440, height: 960 });
@@ -21,6 +21,7 @@ describe('WelcomeScreen', () => {
       const texts = renderer.getAllText();
       expect(texts).toContain('A focused SVN client');
       expect(texts).toContain('Open a working copy to see it here.');
+      expect(renderer.findByTestId('brand-mark')).toBeTruthy();
       expect(renderer.findByTestId('welcome-title')).toBeTruthy();
     } finally {
       unmount();
